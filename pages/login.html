@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GFL Secure Access Hub - Banking & Cooperative Savings</title>
+    
+    <!-- Google Fonts (Poppins) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <style>
+        :root {
+            --gfl-green: #198754;
+            --gfl-green-dark: #146c43;
+            --gfl-whitesmoke: #f8f9fa;
+        }
+        html, body{
+            height: 100%; width: 100%;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--gfl-whitesmoke);
+        }
+        .login-vh {
+            min-height: 100%;
+        }
+        .brand-panel {
+            background: linear-gradient(135deg, rgba(20, 108, 67, 0.95), rgba(25, 135, 84, 0.9)), 
+                        url('https://images.unsplash.com/photo-1563013544-824ae1d704d3?auto=format&fit=crop&w=1000&q=80') center/cover no-repeat;
+        }
+        .form-control:focus {
+            border-color: var(--gfl-green);
+            box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.15);
+        }
+        .btn-gfl-success {
+            background-color: var(--gfl-green);
+            border: none;
+            transition: all 0.25s ease;
+        }
+        .btn-gfl-success:hover {
+            background-color: var(--gfl-green-dark);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+    <div class="container-fluid p-0 h-100">
+        <div class="row g-0 login-vh">
+            
+            <!-- Left Panel: Brand Features & System Info (Visible on large screens) -->
+            <div class="col-lg-6 d-none d-lg-flex flex-column justify-content-between p-5 text-white brand-panel position-relative">
+                
+                <!-- Header Logo Inside Panel -->
+                <div class="d-flex align-items-center">
+                    <span class="bg-white rounded-3 d-flex align-items-center justify-content-center me-2 shadow" style="width: 40px; height: 40px;">
+                        <i class="bi bi-wallet2 text-success fs-5"></i>
+                    </span>
+                    <span class="fs-3 fw-bold tracking-tight">GFL<span class="text-white opacity-50">.</span></span>
+                </div>
+
+                <!-- Mid Core Pitch Information Content -->
+                <div class="my-auto max-width-md" style="max-width: 520px;" data-reveal="fade-right">
+                    <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-2 fw-medium mb-3">Secure Ledger Node</span>
+                    <h1 class="display-5 fw-bold lh-sm mb-4">Access Your Multi-Wallet Ecosystem</h1>
+                    <p class="lead opacity-90 mb-4">Monitor your active savings slots, check grant approvals, manage micro-loans, or track your food basket contributions smoothly from a unified portal.</p>
+                    
+                    <!-- Quick Parameters Info Bullet Items -->
+                    <div class="vstack gap-3 small opacity-85">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-shield-check-fill text-warning fs-5"></i>
+                            <span>BVN Secured Environment with automated ledger processing.</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-exclamation-octagon-fill text-warning fs-5"></i>
+                            <span><strong>Saturday Deadline:</strong> Ensure wallets are funded to avoid slot penalties.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Context Inside Panel -->
+                <div class="small opacity-50">
+                    &copy; 2026 GFL Financial Cooperative. All transactions are securely encrypted.
+                </div>
+            </div>
+
+            <!-- Right Panel: The Interactive Secure Login Form Box -->
+            <div class="col-12 col-lg-6 d-flex align-items-center justify-content-center p-4 p-sm-5 bg-white">
+                <div class="w-100 mx-auto" style="max-width: 440px;" data-reveal="fade-left">
+                    
+                    <!-- Small screen mobile header indicator logo -->
+                    <div class="d-flex align-items-center mb-4 d-lg-none">
+                        <span class="bg-success rounded-3 d-flex align-items-center justify-content-center me-2 text-white" style="width: 36px; height: 36px;">
+                            <i class="bi bi-wallet2 fs-6"></i>
+                        </span>
+                        <span class="fs-4 fw-bold text-dark">GFL<span class="text-success">.</span></span>
+                    </div>
+
+                    <!-- Welcome Headers -->
+                    <div class="mb-4">
+                        <h2 class="fw-bold text-dark mb-1">Welcome Back</h2>
+                        <p class="text-secondary small">Provide your credentials below to access your structural dashboards.</p>
+                    </div>
+
+                    <!-- Main Secure Form -->
+                    <form id="gflLoginForm" class="needs-validation">
+                        
+                        <!-- Registered Email / Username Input Area -->
+                        <div class="mb-3">
+                            <label for="loginEmail" class="form-label fw-medium text-dark small">Email Address</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-envelope"></i></span>
+                                <input type="email" id="loginEmail" class="form-control form-control-lg border-start-0 fs-6 bg-light" placeholder="name@example.com" required>
+                                <div class="invalid-feedback">Please enter a valid registered email address.</div>
+                            </div>
+                        </div>
+
+                        <!-- Password Secure Input Area -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="loginPassword" class="form-label fw-medium text-dark small m-0">Password</label>
+                                <a href="/forget-password" class="text-success text-decoration-none small fw-medium">Forgot Password?</a>
+                            </div>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-shield-lock"></i></span>
+                                <input type="password" id="loginPassword" class="form-control form-control-lg border-start-0 fs-6 bg-light" placeholder="••••••••" required>
+                                <button class="input-group-text bg-light text-muted border-start-0" type="button" id="togglePassword">
+                                    <i class="bi bi-eye" id="toggleIcon"></i>
+                                </button>
+                                <div class="invalid-feedback">Please provide your secure profile passkey.</div>
+                            </div>
+                        </div>
+
+                        <!-- Remember Device Parameters Toggle Check -->
+                        <div class="form-check mb-4 d-flex align-items-center">
+                            <input class="form-check-input mt-0 border-secondary-subtle" type="checkbox" id="rememberMe">
+                            <label class="form-check-label text-secondary small ms-2" for="rememberMe">
+                                Trust and remember this device for 30 days
+                            </label>
+                        </div>
+
+                        <!-- Secure Access Action Button Execution -->
+                        <button type="submit" class="btn btn-success btn-lg w-100 rounded-pill py-3 fw-medium text-white shadow-sm d-flex align-items-center justify-content-center gap-2 btn-gfl-success">
+                            <i class="bi bi-unlock-fill"></i> Access Account
+                        </button>
+                    </form>
+
+                    <!-- Redirection Pathways to Registration Layout -->
+                    <div class="text-center mt-4 pt-2 border-top border-light-subtle">
+                        <p class="text-secondary small mb-0">
+                            New to the cooperative platform? <a href="/signup" class="text-success text-decoration-none fw-semibold">Open An Account</a>
+                        </p>
+                        <span class="text-muted d-block mt-2 font-monospace" style="font-size: 0.68rem;">Activation Requires ₦6,000 Setup Capital.</span>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- ScrollReveal CDN -->
+    <script src="https://unpkg.com/scrollreveal"></script>
+
+<script>
+    const togglePassword = document.getElementById("togglePassword");
+    const passwordInput = document.getElementById("loginPassword");
+    const toggleIcon = document.getElementById("toggleIcon");
+
+    togglePassword.onclick=()=>{
+                if (passwordInput.type === "password") {
+                    passwordInput.type = "text";
+                    toggleIcon.classList.remove("bi-eye");
+                    toggleIcon.classList.add("bi-eye-slash");
+
+                } else {
+                    passwordInput.type = "password";
+                    toggleIcon.classList.remove("bi-eye-slash");
+                    toggleIcon.classList.add("bi-eye");
+                }
+    }
+
+   
+
+    // ==========================
+    // LOGIN FORM
+    // ==========================
+    const form = document.getElementById("gflLoginForm");
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        form.classList.add("was-validated");
+        const email = document.getElementById("loginEmail").value.trim();
+        const pass = document.getElementById("loginPassword").value;
+        // Bootstrap Validation
+        if (!form.checkValidity()) {
+            return;
+        }
+
+        // Email Validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            Swal.fire({
+                icon: "error",
+                title: "Invalid Email",
+                text: "Please enter a valid email address."
+            });
+            return;
+        }
+
+        // Password Validation
+        if (pass.length < 6) {
+            Swal.fire({
+                icon: "error",
+                title: "Invalid Password",
+                text: "Password must be at least 6 characters."
+            });
+            return;
+        }
+
+        try {
+
+            Swal.fire({
+                title: "Signing In...",
+                text: "Please wait",
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const response = await fetch("<?= $company_info['server'] ?>", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    action: "/auth/login",
+                    email: email,
+                    pass: pass
+                })
+            });
+
+            const res = await response.json();
+
+            Swal.close();
+
+            if (res.success) {
+
+                await Swal.fire({
+                    icon: "success",
+                    title: "Login Successful",
+                    text: res.message || "Redirecting...",
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+
+                if (res.data?.redirect) {
+                    window.location.href = res.data.redirect;
+                }
+
+            } else {
+
+                Swal.fire({
+                    icon: "error",
+                    title: "Login Failed",
+                    text: res.message || "Invalid email or password"
+                });
+
+            }
+
+        } catch (error) {
+
+            console.error(error);
+
+            Swal.fire({
+                icon: "error",
+                title: "Connection Error",
+                text: "Unable to connect to the server."
+            });
+
+        }
+
+    });
+
+</script>
+</body>
+</html>

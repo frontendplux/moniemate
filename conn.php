@@ -10,10 +10,10 @@ if ($host === 'localhost' || str_contains($host, '127.0.0.1') || str_contains($h
 
 } else {
 
-    define('db_host', 'localhost');
-    define('db_user', 'bustofrj_busterblog');
-    define('db_pass', 'Samuel252.');
-    define('db_name', 'bustofrj_air9ja');
+    define('db_host', 'sql211.infinityfree.com');
+    define('db_user', 'if0_41851694');
+    define('db_pass', '8vyR0j5014nT8');
+    define('db_name', 'if0_41851694_monimate');
 }
    $conn=new mysqli(db_host,db_user,db_pass) or die('unknow database connection');
    $conn->query('create database if not exists '. db_name);

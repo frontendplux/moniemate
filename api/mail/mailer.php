@@ -26,7 +26,7 @@ function sendMailByMe($to, $subject, $html)
 
         $mail->setFrom(
             'shoplenca@air9ja.com',
-            'GFL'
+            'ShopLenca'
         );
 
         $mail->addAddress($to);

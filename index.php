@@ -2,12 +2,13 @@
 include __DIR__."/conn.php";
 session_start();
 $data=parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
 $company_info=[
     "name" => "",
     "title" => "",
     "logo" => "/pygg.png",
     "description" => "", 
-    "server" => "/api/index.php",
+    "server" => $protocol . $_SERVER['HTTP_HOST'] . "/api/index.php"
 ];
 switch ($data) {
     case '/':

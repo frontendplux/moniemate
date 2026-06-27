@@ -2,19 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>GFL Security Center - Recover Account Node</title>
-    
-    <!-- Google Fonts (Poppins) -->
+    <link rel="icon" href="<?= $company_info['logo'] ?>" type="image/x-icon">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Bootstrap 5 CSS -->
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
+
     <style>
         :root {
             --gfl-green: #198754;
@@ -25,9 +23,7 @@
             font-family: 'Poppins', sans-serif;
             background-color: var(--gfl-whitesmoke);
         }
-        .panel-vh {
-            min-height: 100vh;
-        }
+        .panel-vh { min-height: 100%; }
         .form-control:focus, .form-select:focus {
             border-color: var(--gfl-green);
             box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.15);
@@ -37,11 +33,10 @@
             border: none;
             transition: all 0.25s ease;
         }
-        .btn-gfl-success:hover {
+        .btn-gfl-success:hover:not(:disabled) {
             background-color: var(--gfl-green-dark);
             transform: translateY(-1px);
         }
-        /* Custom UI Selector Chips */
         .recovery-chip {
             cursor: pointer;
             border: 2px solid #e9ecef;
@@ -58,6 +53,23 @@
             border-color: var(--gfl-green);
             background-color: rgba(25, 135, 84, 0.04);
         }
+        /* Country code select inside input-group */
+        .phone-code-select {
+            width: auto;
+            max-width: 120px;
+            border-radius: 0;
+            border-right: 1px solid #dee2e6;
+            background-color: #f8f9fa;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+        .phone-code-select:focus {
+            border-color: var(--gfl-green);
+            box-shadow: none;
+            z-index: 3;
+        }
+        #phoneWrapper { display: none; }
+        #standardWrapper { display: block; }
     </style>
 </head>
 <body class="bg-light">
@@ -65,30 +77,27 @@
     <div class="container py-5">
         <div class="row justify-content-center align-items-center panel-vh">
             <div class="col-12 col-md-9 col-lg-6" data-reveal="fade-up">
-                
-                <!-- Main Recovery Container Card -->
+
                 <div class="bg-white p-4 p-sm-5 rounded-5 shadow-sm border border-light-subtle">
-                    
-                    <!-- Top Icon Header -->
+
+                    <!-- Header -->
                     <div class="text-center mb-4">
                         <span class="bg-success-subtle text-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 64px; height: 64px;">
                             <i class="bi bi-shield-lock fs-2"></i>
                         </span>
                         <h2 class="fw-bold text-dark mb-1">Account Recovery</h2>
-                        <p class="text-secondary small max-width-xs mx-auto" style="max-width: 380px;">
-                            Lost access to your multi-wallet ledger? Choose your preferred identity vector below to locate your secure account profile.
+                        <p class="text-secondary small mx-auto" style="max-width: 380px;">
+                            Lost access to your account? Choose your preferred method below to locate and recover your secure profile.
                         </p>
                     </div>
 
-                    <!-- Dynamic Recovery Search Form -->
-                    <form id="gflRecoveryForm" class="needs-validation" novalidate>
-                        
-                        <!-- Step 1: Identifier Selection Grid System -->
+                    <form id="gflRecoveryForm" novalidate>
+
+                        <!-- Method Selector Chips -->
                         <div class="mb-4">
-                            <label class="form-label fw-semibold text-dark small mb-2">Select Account Finder Method:</label>
+                            <label class="form-label fw-semibold text-dark small mb-2">Select Recovery Method:</label>
                             <div class="row g-2">
-                                
-                                <!-- Mode A: Account Number Vector -->
+
                                 <div class="col-4">
                                     <input type="radio" name="recoveryMethod" id="methodAccount" value="account" class="d-none recovery-radio" checked>
                                     <label for="methodAccount" class="recovery-chip text-center d-block h-100">
@@ -97,7 +106,6 @@
                                     </label>
                                 </div>
 
-                                <!-- Mode B: Phone Number Vector -->
                                 <div class="col-4">
                                     <input type="radio" name="recoveryMethod" id="methodPhone" value="phone" class="d-none recovery-radio">
                                     <label for="methodPhone" class="recovery-chip text-center d-block h-100">
@@ -106,7 +114,6 @@
                                     </label>
                                 </div>
 
-                                <!-- Mode C: Email Vector -->
                                 <div class="col-4">
                                     <input type="radio" name="recoveryMethod" id="methodEmail" value="email" class="d-none recovery-radio">
                                     <label for="methodEmail" class="recovery-chip text-center d-block h-100">
@@ -118,24 +125,78 @@
                             </div>
                         </div>
 
-                        <!-- Step 2: Adaptive Dynamic Target Input Area -->
-                        <div class="mb-4">
-                            <label id="inputFieldLabel" for="recoveryInput" class="form-label fw-semibold text-dark small mb-1">Enter Your Account Number</label>
+                        <!-- ── Standard input (account / email) ── -->
+                        <div class="mb-4" id="standardWrapper">
+                            <label id="inputFieldLabel" for="recoveryInput" class="form-label fw-semibold text-dark small mb-1">
+                                Enter Your Account Number
+                            </label>
                             <div class="input-group">
-                                <span id="inputFieldIcon" class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-hash"></i></span>
-                                <input type="text" id="recoveryInput" class="form-control form-control-lg border-start-0 fs-6 bg-light font-monospace" placeholder="e.g., 1023456789" required>
-                                <div id="inputFieldFeedback" class="invalid-feedback">Please provide your matching 10-digit GFL or virtual account number identifier.</div>
+                                <span id="inputFieldIcon" class="input-group-text bg-light text-muted border-end-0">
+                                    <i class="bi bi-hash"></i>
+                                </span>
+                                <input type="text" id="recoveryInput"
+                                    class="form-control form-control-lg border-start-0 fs-6 bg-light font-monospace"
+                                    placeholder="e.g., 1023456789"
+                                    maxlength="10">
                             </div>
-                            <div id="fieldHelpHint" class="form-text text-muted" style="font-size: 0.72rem;">Accepts either your standard internal GFL identifier string or assigned virtual banking number.</div>
+                            <div id="fieldHelpHint" class="form-text text-muted mt-1" style="font-size: 0.72rem;">
+                                Accepts your internal GFL account number or assigned virtual banking number.
+                            </div>
+                            <div id="standardError" class="text-danger small mt-1 d-none"></div>
                         </div>
 
-                        <!-- Action Controls Button Execution Grid -->
+                        <!-- ── Phone input with country code ── -->
+                        <div class="mb-4" id="phoneWrapper">
+                            <label class="form-label fw-semibold text-dark small mb-1">
+                                Enter Your Registered Phone Number
+                            </label>
+                            <div class="input-group">
+
+                                <!-- Country code dropdown -->
+                                <span class="input-group-text bg-light text-muted border-end-0 pe-0">
+                                    <i class="bi bi-phone"></i>
+                                </span>
+                                <select id="phoneCodeSelect" class="form-select form-select-lg phone-code-select border-start-0">
+                                    <option value="+234" data-flag="🇳🇬" selected>🇳🇬 +234</option>
+                                    <option value="+1"   data-flag="🇺🇸">🇺🇸 +1</option>
+                                    <option value="+44"  data-flag="🇬🇧">🇬🇧 +44</option>
+                                    <option value="+233" data-flag="🇬🇭">🇬🇭 +233</option>
+                                    <option value="+254" data-flag="🇰🇪">🇰🇪 +254</option>
+                                    <option value="+27"  data-flag="🇿🇦">🇿🇦 +27</option>
+                                    <option value="+251" data-flag="🇪🇹">🇪🇹 +251</option>
+                                    <option value="+255" data-flag="🇹🇿">🇹🇿 +255</option>
+                                    <option value="+256" data-flag="🇺🇬">🇺🇬 +256</option>
+                                    <option value="+225" data-flag="🇨🇮">🇨🇮 +225</option>
+                                    <option value="+221" data-flag="🇸🇳">🇸🇳 +221</option>
+                                    <option value="+237" data-flag="🇨🇲">🇨🇲 +237</option>
+                                    <option value="+91"  data-flag="🇮🇳">🇮🇳 +91</option>
+                                    <option value="+86"  data-flag="🇨🇳">🇨🇳 +86</option>
+                                    <option value="+49"  data-flag="🇩🇪">🇩🇪 +49</option>
+                                    <option value="+33"  data-flag="🇫🇷">🇫🇷 +33</option>
+                                    <option value="+971" data-flag="🇦🇪">🇦🇪 +971</option>
+                                    <option value="+966" data-flag="🇸🇦">🇸🇦 +966</option>
+                                </select>
+
+                                <!-- Phone number field -->
+                                <input type="tel" id="phoneNumberInput"
+                                    class="form-control form-control-lg fs-6 bg-light font-monospace"
+                                    placeholder="08012345678"
+                                    maxlength="15"
+                                    inputmode="numeric">
+                            </div>
+                            <div class="form-text text-muted mt-1" style="font-size: 0.72rem;">
+                                Select your country code, then enter your number without the leading zero if required.
+                            </div>
+                            <div id="phoneError" class="text-danger small mt-1 d-none"></div>
+                        </div>
+
+                        <!-- Action Buttons -->
                         <div class="vstack gap-2">
-                            <button type="submit" id="submitRecoveryButton" class="btn btn-success btn-lg w-100 rounded-pill py-3 fw-medium text-white shadow-sm d-flex align-items-center justify-content-center gap-2 btn-gfl-success">
+                            <button type="submit" id="submitRecoveryButton"
+                                class="btn btn-success btn-lg w-100 rounded-pill py-3 fw-medium text-white shadow-sm d-flex align-items-center justify-content-center gap-2 btn-gfl-success">
                                 <i class="bi bi-search"></i> Search Secure Ledger
                             </button>
-                            
-                            <a href="#" class="btn btn-link text-success text-decoration-none small fw-medium mt-2 py-1">
+                            <a href="/login" class="btn btn-link text-success text-decoration-none small fw-medium mt-2 py-1">
                                 <i class="bi bi-arrow-left"></i> Return to Secure Log In
                             </a>
                         </div>
@@ -147,141 +208,242 @@
         </div>
     </div>
 
-    <!-- Bootstrap 5 JS Bundle Link -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- ScrollReveal CDN Library -->
     <script src="https://unpkg.com/scrollreveal"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- Custom State Modification Script Logic Engine -->
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            
-            const radioMethods = document.querySelectorAll('input[name="recoveryMethod"]');
-            const inputLabel = document.getElementById("inputFieldLabel");
-            const inputIcon = document.getElementById("inputFieldIcon");
-            const inputElement = document.getElementById("recoveryInput");
-            const inputFeedback = document.getElementById("inputFieldFeedback");
-            const helpHint = document.getElementById("fieldHelpHint");
-            const form = document.getElementById("gflRecoveryForm");
+    document.addEventListener("DOMContentLoaded", function () {
 
-            // Define configurations dictionary for each selector chip state dynamically
-            const structuralStates = {
-                account: {
-                    label: "Enter Your Account Number",
-                    iconClass: "bi-hash",
-                    placeholder: "e.g., 1023456789",
-                    feedback: "Please provide your matching 10-digit GFL or virtual account number identifier.",
-                    hint: "Accepts either your standard internal GFL identifier string or assigned virtual banking number.",
-                    filterRegex: /[^0-9]/g,
-                    maxLength: "10"
-                },
-                phone: {
-                    label: "Enter Your Registered Phone Number",
-                    iconClass: "bi-phone",
-                    placeholder: "e.g., 08012345678",
-                    feedback: "Please provide the active 11-digit mobile lane linked to your profiles.",
-                    hint: "An OTP profile authorization index key code will slide directly into this phone line terminal.",
-                    filterRegex: /[^0-9]/g,
-                    maxLength: "11"
-                },
-                email: {
-                    label: "Enter Your Registered Email Address",
-                    iconClass: "bi-envelope",
-                    placeholder: "name@example.com",
-                    feedback: "Please check your format string structure. A valid email coordinates mapping string is required.",
-                    hint: "We'll dispatch a cryptographically randomized configuration pass link directly into this secure inbox.",
-                    filterRegex: null,
-                    maxLength: "100"
-                }
-            };
+        const SERVER = "<?= $company_info['server'] ?>";
 
-            // 1. Reactive State Observer Mutator Mapping Logic
-            function applyIdentifierState(methodKey) {
-                const config = structuralStates[methodKey];
-                
-                // Mutate texts and layout visually
-                inputLabel.textContent = config.label;
-                inputElement.setAttribute("placeholder", config.placeholder);
-                inputElement.setAttribute("maxlength", config.maxLength);
-                inputFeedback.textContent = config.feedback;
-                helpHint.innerHTML = config.hint;
-                
-                // Set native HTML input types dynamically to trigger proper smartphone keyboards
-                inputElement.setAttribute("type", methodKey === "email" ? "email" : "text");
-                
-                // Manage bootstrap icons classes transitions safely
-                inputIcon.innerHTML = `<i class="bi ${config.iconClass}"></i>`;
-                
-                // Clear input string trace to eliminate cross-format values validation collisions
-                inputElement.value = "";
-                form.classList.remove("was-validated");
+        // ── Elements ──────────────────────────────────────────────────────
+        const radioMethods      = document.querySelectorAll('input[name="recoveryMethod"]');
+        const standardWrapper   = document.getElementById("standardWrapper");
+        const phoneWrapper      = document.getElementById("phoneWrapper");
+        const inputLabel        = document.getElementById("inputFieldLabel");
+        const inputIcon         = document.getElementById("inputFieldIcon");
+        const recoveryInput     = document.getElementById("recoveryInput");
+        const fieldHelpHint     = document.getElementById("fieldHelpHint");
+        const standardError     = document.getElementById("standardError");
+        const phoneCodeSelect   = document.getElementById("phoneCodeSelect");
+        const phoneNumberInput  = document.getElementById("phoneNumberInput");
+        const phoneError        = document.getElementById("phoneError");
+        const form              = document.getElementById("gflRecoveryForm");
+        const submitBtn         = document.getElementById("submitRecoveryButton");
+
+        // ── Method config (account + email only — phone handled separately) ──
+        const methodConfig = {
+            account: {
+                label:       "Enter Your Account Number",
+                icon:        "bi-hash",
+                placeholder: "e.g., 1023456789",
+                hint:        "Accepts your internal GFL account number or assigned virtual banking number.",
+                type:        "text",
+                maxLength:   "10",
+                filterRegex: /[^0-9]/g
+            },
+            email: {
+                label:       "Enter Your Registered Email Address",
+                icon:        "bi-envelope",
+                placeholder: "name@example.com",
+                hint:        "A password reset link will be sent to this inbox.",
+                type:        "email",
+                maxLength:   "100",
+                filterRegex: null
+            }
+        };
+
+        // ── Switch visible panel ──────────────────────────────────────────
+        function applyMethod(method) {
+            standardError.classList.add("d-none");
+            phoneError.classList.add("d-none");
+            recoveryInput.value     = "";
+            phoneNumberInput.value  = "";
+
+            if (method === "phone") {
+                standardWrapper.style.display = "none";
+                phoneWrapper.style.display    = "block";
+                return;
             }
 
-            // Bind listeners inside the radio array items structure
-            radioMethods.forEach(radio => {
-                radio.addEventListener("change", function() {
-                    if (this.checked) applyIdentifierState(this.value);
-                });
-            });
+            phoneWrapper.style.display    = "none";
+            standardWrapper.style.display = "block";
 
-            // 2. Continuous Field Sanitization Stream Handling
-            inputElement.addEventListener("input", function() {
-                const selectedMethod = document.querySelector('input[name="recoveryMethod"]:checked').value;
-                const activeConfig = structuralStates[selectedMethod];
-                
-                if (activeConfig.filterRegex) {
-                    this.value = this.value.replace(activeConfig.filterRegex, '');
+            const cfg = methodConfig[method];
+            inputLabel.textContent = cfg.label;
+            inputIcon.innerHTML    = `<i class="bi ${cfg.icon}"></i>`;
+            recoveryInput.setAttribute("type",        cfg.type);
+            recoveryInput.setAttribute("placeholder", cfg.placeholder);
+            recoveryInput.setAttribute("maxlength",   cfg.maxLength);
+            fieldHelpHint.textContent = cfg.hint;
+        }
+
+        radioMethods.forEach(r => {
+            r.addEventListener("change", function () {
+                if (this.checked) applyMethod(this.value);
+            });
+        });
+
+        // ── Digit-only filter for account / phone inputs ──────────────────
+        recoveryInput.addEventListener("input", function () {
+            const method = document.querySelector('input[name="recoveryMethod"]:checked').value;
+            if (methodConfig[method]?.filterRegex) {
+                this.value = this.value.replace(methodConfig[method].filterRegex, "");
+            }
+        });
+
+        phoneNumberInput.addEventListener("input", function () {
+            this.value = this.value.replace(/[^0-9]/g, "");
+        });
+
+        // ── Inline error helpers ──────────────────────────────────────────
+        function showError(el, msg) {
+            el.textContent = msg;
+            el.classList.remove("d-none");
+        }
+        function clearErrors() {
+            standardError.classList.add("d-none");
+            phoneError.classList.add("d-none");
+        }
+
+        // ── Validate before submit ────────────────────────────────────────
+        function validate(method) {
+            clearErrors();
+
+            if (method === "account") {
+                if (recoveryInput.value.trim().length !== 10) {
+                    showError(standardError, "Account number must be exactly 10 digits.");
+                    return false;
                 }
+            }
+
+            if (method === "email") {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(recoveryInput.value.trim())) {
+                    showError(standardError, "Please enter a valid email address.");
+                    return false;
+                }
+            }
+
+            if (method === "phone") {
+                const num = phoneNumberInput.value.trim();
+                if (num.length < 7 || num.length > 15) {
+                    showError(phoneError, "Please enter a valid phone number (7–15 digits).");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // ── Submit ────────────────────────────────────────────────────────
+        form.addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const method = document.querySelector('input[name="recoveryMethod"]:checked').value;
+            if (!validate(method)) return;
+
+            // Build payload
+            const payload = { action: "/auth/forgot-password", method };
+
+            if (method === "account") {
+                payload.account_number = recoveryInput.value.trim();
+            } else if (method === "email") {
+                payload.email = recoveryInput.value.trim();
+            } else if (method === "phone") {
+                payload.phone_code = phoneCodeSelect.value;
+                payload.phone      = phoneNumberInput.value.trim();
+            }
+
+            // Loading state
+            submitBtn.disabled  = true;
+            submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Searching...`;
+
+            Swal.fire({
+                title:             "Searching...",
+                text:              "Locating your account profile.",
+                allowOutsideClick: false,
+                allowEscapeKey:    false,
+                showConfirmButton: false,
+                didOpen:           () => Swal.showLoading()
             });
 
-            // 3. Form Submission Validation and Parsing Pipeline Action 
-            if (form) {
-                form.addEventListener("submit", function (e) {
-                    const currentMethod = document.querySelector('input[name="recoveryMethod"]:checked').value;
-                    const val = inputElement.value.trim();
-                    let isValid = true;
+            try {
 
-                    // Apply strict structural string evaluation criteria constraints
-                    if (currentMethod === 'account' && val.length < 10) isValid = false;
-                    if (currentMethod === 'phone' && val.length < 11) isValid = false;
-                    if (!form.checkValidity()) isValid = false;
+                const res = await fetch(SERVER, {
+                    method:  "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body:    JSON.stringify(payload)
+                }).then(r => r.json());
 
-                    if (!isValid) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        inputElement.setCustomValidity("Invalid matrix pattern execution parameters.");
-                    } else {
-                        inputElement.setCustomValidity("");
-                        e.preventDefault(); // Stop reload for presentation tracking
-                        
-                        // Simulating Database Node Verification Loops
-                        const submitBtn = document.getElementById("submitRecoveryButton");
-                        submitBtn.disabled = true;
-                        submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Parsing Database Nodes...`;
-                        
-                        setTimeout(() => {
-                            alert(`Account identity vector located smoothly! Verification dispatch keys have been pushed via secure pathways mapping to this verified profile lookup index.`);
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = `<i class="bi bi-search"></i> Search Secure Ledger`;
-                            form.reset();
-                            applyIdentifierState('account'); // Reset back cleanly
-                        }, 1500);
+                Swal.close();
+
+                if (res.success) {
+
+                    await Swal.fire({
+                        icon:              "success",
+                        title:             "Account Located",
+                        text:              res.message,
+                        confirmButtonText: "Continue",
+                        confirmButtonColor:"#198754",
+                        allowOutsideClick: false
+                    });
+
+                    if (res.data?.redirect) {
+                        window.location.href = res.data.redirect;
                     }
-                    form.classList.add("was-validated");
-                }, false);
-            }
 
-            // 4. Scroll Reveal Initialization Engine Layouts
-            if (typeof ScrollReveal !== 'undefined') {
-                ScrollReveal().reveal('[data-reveal="fade-up"]', {
-                    origin: 'bottom',
-                    distance: '30px',
-                    duration: 900,
-                    easing: 'ease-out'
+                    return;
+                }
+
+                // Hard redirect (e.g. account blocked / closed)
+                if (res.data?.redirect) {
+                    await Swal.fire({
+                        icon:  "error",
+                        title: "Recovery Failed",
+                        text:  res.message,
+                        confirmButtonColor: "#198754"
+                    });
+                    window.location.href = res.data.redirect;
+                    return;
+                }
+
+                // Soft error — stay on page
+                Swal.fire({
+                    icon:              "error",
+                    title:             "Not Found",
+                    text:              res.message,
+                    confirmButtonColor:"#198754"
                 });
+
+            } catch (err) {
+                console.error(err);
+                Swal.close();
+                Swal.fire({
+                    icon:  "error",
+                    title: "Connection Error",
+                    text:  "Unable to reach the server. Please try again.",
+                    confirmButtonColor: "#198754"
+                });
+            } finally {
+                submitBtn.disabled  = false;
+                submitBtn.innerHTML = `<i class="bi bi-search"></i> Search Secure Ledger`;
             }
 
         });
+
+        // ── ScrollReveal ──────────────────────────────────────────────────
+        if (typeof ScrollReveal !== "undefined") {
+            ScrollReveal().reveal('[data-reveal="fade-up"]', {
+                origin:   "bottom",
+                distance: "30px",
+                duration: 900,
+                easing:   "ease-out"
+            });
+        }
+
+    });
     </script>
 </body>
 </html>

@@ -5,6 +5,7 @@ $data=parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $company_info=[
     "name" => "",
     "title" => "",
+    "logo" => "/pygg.png",
     "description" => "", 
     "server" => "/api/index.php",
 ];
@@ -22,6 +23,19 @@ switch ($data) {
        include __DIR__."/pages/signup.php"; 
         break;
     
+    case '/confirm-passcode':
+         include __DIR__."/pages/passcode.php"; 
+        break;
+    
+    case '/create-pin':
+         include __DIR__."/pages/member/create-pin.php"; 
+        break;
+    
+    case '/reset-password':
+         include __DIR__."/pages/reset-password.php"; 
+        break;
+    
+    
     case '/signup-bvn':
        include __DIR__."/pages/bvn.php"; 
         break;
@@ -37,7 +51,12 @@ switch ($data) {
     case '/passcode':
             include __DIR__."/pages/passcode.php"; 
         break;
+
+   /* =================================
+      member start here
+   ===================================================== */     
     
+    case '/dashboard':
     case '/member':
             include __DIR__."/pages/member/index.php"; 
         break;

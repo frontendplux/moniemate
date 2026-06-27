@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>GFL Gatekeeper - Verify Secure Access Node</title>
-    
+    <link rel="icon" href="<?= $company_info['logo'] ?>" type="image/x-icon">
     <!-- Google Fonts (Poppins) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,7 @@
             background-color: var(--gfl-whitesmoke);
         }
         .panel-vh {
-            min-height: 100vh;
+            min-height: 100%;
         }
         .btn-gfl-success {
             background-color: var(--gfl-green);
@@ -137,158 +137,447 @@
     <!-- ScrollReveal Animation Module Engine -->
     <script src="https://unpkg.com/scrollreveal"></script>
 
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <!-- Interactive Auto-Focus and Expiry Clock Script Loops Logic -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            
-            const fieldsContainer = document.getElementById("otpFieldsContainer");
-            const inputs = document.querySelectorAll(".otp-input-field");
-            const countdownDisplay = document.getElementById("countdownDisplay");
-            const timerIcon = document.getElementById("timerIcon");
-            const statusMsg = document.getElementById("validationSystemMessage");
-            const verifyBtn = document.getElementById("verifyCodeButton");
-            const resendBtn = document.getElementById("resendCodeButton");
-            const resendCounter = document.getElementById("resendTimeoutCount");
-            const passForm = document.getElementById("gflPasscodeForm");
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
 
-            // --- 1. Auto-Focus Matrix Navigation Inputs Handling Loops ---
-            inputs.forEach((input, index) => {
-                // Ensure only pure positive digits are typed inside the slots
-                input.addEventListener("input", function(e) {
-                    this.value = this.value.replace(/[^0-9]/g, '');
-                    
-                    if (this.value.length === 1 && index < inputs.length - 1) {
-                        inputs[index + 1].focus(); // Advance cursor index path forward
-                    }
-                    evaluateFormState();
-                });
+        // -------------------------------------------------------
+        // CONFIGURATION
+        // -------------------------------------------------------
 
-                // Capture key codes loops to handle backspaces properly
-                input.addEventListener("keydown", function(e) {
-                    if (e.key === "Backspace" && this.value.length === 0 && index > 0) {
-                        inputs[index - 1].focus(); // Move cursor back
-                    }
-                });
+        const SERVER = "<?= $company_info['server'] ?>";
 
-                // Support direct multi-digit paste mechanics
-                input.addEventListener("paste", function(e) {
-                    e.preventDefault();
-                    const pasteData = e.clipboardData.getData("text").replace(/[^0-9]/g, '').substring(0, 6);
-                    
-                    if (pasteData.length > 0) {
-                        const splitData = pasteData.split('');
-                        inputs.forEach((inp, idx) => {
-                            if (splitData[idx]) inp.value = splitData[idx];
-                        });
-                        // Focus position placement resolution on the last elements 
-                        const targetFocusIndex = Math.min(splitData.length - 1, inputs.length - 1);
-                        inputs[targetFocusIndex].focus();
-                    }
-                    evaluateFormState();
-                });
-            });
+        // Param is "u", value is URL-encoded base64 — decodeURIComponent first
+        const rawParam   = new URLSearchParams(window.location.search).get("u") || "";
+        const emailParam = decodeURIComponent(rawParam); // now clean base64
+        const email      = emailParam;                   // passed as-is to server (already base64)
 
-            function evaluateFormState() {
-                const completedString = getPasscodeString();
-                // Enable button visually only when matrix fields are fully saturated
-                verifyBtn.disabled = (completedString.length !== 6);
-            }
+        // Sanity check — if no email param at all, bounce to signup
+        if (!rawParam) {
+            window.location.href = "/signup";
+        }
 
-            function getPasscodeString() {
-                let code = "";
-                inputs.forEach(inp => code += inp.value);
-                return code;
-            }
+        // -------------------------------------------------------
+        // ELEMENTS
+        // -------------------------------------------------------
 
-            // --- 2. Strict 15-Minute Expiry Countdown Engine ---
-            let totalTimeInSeconds = 15 * 60; // 900 Seconds total tracking array parameters
-            
-            const expiryIntervalClock = setInterval(() => {
-                totalTimeInSeconds--;
-                
-                let minutes = Math.floor(totalTimeInSeconds / 60);
-                let seconds = totalTimeInSeconds % 60;
+        const fieldsContainer  = document.getElementById("otpFieldsContainer");
+        const inputs           = document.querySelectorAll(".otp-input-field");
+        const countdownDisplay = document.getElementById("countdownDisplay");
+        const timerIcon        = document.getElementById("timerIcon");
+        const statusMsg        = document.getElementById("validationSystemMessage");
+        const verifyBtn        = document.getElementById("verifyCodeButton");
+        const resendBtn        = document.getElementById("resendCodeButton");
+        const resendCounter    = document.getElementById("resendTimeoutCount");
+        const passForm         = document.getElementById("gflPasscodeForm");
 
-                // Format values with matching prepended zero string loops
-                minutes = minutes < 10 ? "0" + minutes : minutes;
-                seconds = seconds < 10 ? "0" + seconds : seconds;
+        let countdownInterval = null;
+        let resendInterval    = null;
+        let remainingSeconds  = 0;
 
-                countdownDisplay.textContent = `${minutes}:${seconds}`;
+        // -------------------------------------------------------
+        // HELPERS
+        // -------------------------------------------------------
 
-                // Warning threshold styling adjustments trigger (Less than 3 minutes remaining)
-                if (totalTimeInSeconds <= 180) {
-                    countdownDisplay.classList.replace("text-dark", "text-danger");
-                    timerIcon.classList.replace("text-success", "text-danger");
-                    timerIcon.classList.add("animate-pulse");
-                }
+        function getPasscodeString() {
+            let code = "";
+            inputs.forEach(inp => { code += inp.value.trim(); });
+            return code;
+        }
 
-                // Expiry execution threshold logic target triggers
-                if (totalTimeInSeconds <= 0) {
-                    clearInterval(expiryIntervalClock);
-                    handleCodeExpiryState();
-                }
-            }, 1000);
+        function enableInputs(state = true) {
+            inputs.forEach(inp => { inp.disabled = !state; });
+        }
 
-            function handleCodeExpiryState() {
-                countdownDisplay.textContent = "00:00";
-                statusMsg.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-octagon-fill"></i> Operational Token Expired. Request a new sequence key below.</span>`;
-                inputs.forEach(inp => inp.disabled = true);
-                verifyBtn.disabled = true;
+        function evaluateFormState() {
+            verifyBtn.disabled = getPasscodeString().length !== 6;
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+        }
+
+        function resetVisuals() {
+            countdownDisplay.classList.remove("text-danger");
+            countdownDisplay.classList.add("text-dark");
+            timerIcon.classList.remove("text-danger", "animate-pulse");
+            timerIcon.classList.add("text-success");
+            statusMsg.innerHTML = `<i class="bi bi-lock"></i> Secured 256-Bit Ledger Verification Channel`;
+        }
+
+        function setExpiredState(hardExpired = false) {
+            clearInterval(countdownInterval);
+            countdownDisplay.textContent = "00:00";
+            countdownDisplay.classList.remove("text-dark");
+            countdownDisplay.classList.add("text-danger");
+            timerIcon.classList.remove("text-success");
+            timerIcon.classList.add("text-danger", "animate-pulse");
+            statusMsg.innerHTML = `
+                <span class="text-danger">
+                    <i class="bi bi-exclamation-octagon-fill"></i>
+                    Operational Token Expired. Request a new sequence key below.
+                </span>`;
+            enableInputs(false);
+            verifyBtn.disabled = true;
+
+            if (hardExpired) {
+                // 30-min window gone — must re-register
+                resendBtn.disabled = true;
+                resendBtn.innerHTML = `Session expired. Please register again.`;
+                setTimeout(() => { window.location.href = "/signup"; }, 3000);
+            } else if (!resendInterval) {
                 resendBtn.disabled = false;
                 resendBtn.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Request Fresh 6-Digit Passcode Token`;
             }
+        }
 
-            // --- 3. Anti-Spam Resend Lock Mechanism Loops ---
-            let resendHoldTimer = 30;
-            const resendLockClock = setInterval(() => {
-                resendHoldTimer--;
-                if (resendCounter) resendCounter.textContent = resendHoldTimer;
-                
-                if (resendHoldTimer <= 0) {
-                    clearInterval(resendLockClock);
-                    if(totalTimeInSeconds > 0) { // Only enable if overall form hasn't fully expired yet
-                        resendBtn.disabled = false;
-                        resendBtn.textContent = "Resend Code Over SMS/Email Channels";
-                    }
+        // -------------------------------------------------------
+        // OTP INPUT NAVIGATION
+        // -------------------------------------------------------
+
+        inputs.forEach((input, index) => {
+
+            input.addEventListener("input", function () {
+                this.value = this.value.replace(/[^0-9]/g, "").substring(0, 1);
+                if (this.value && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
                 }
-            }, 1000);
+                evaluateFormState();
+            });
 
-            // --- 4. Form Action Interception Processing Pipeline ---
-            passForm.addEventListener("submit", function(e) {
+            input.addEventListener("keydown", function (e) {
+                if (e.key === "Backspace" && !this.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+                if (e.key === "ArrowLeft"  && index > 0)                inputs[index - 1].focus();
+                if (e.key === "ArrowRight" && index < inputs.length - 1) inputs[index + 1].focus();
+            });
+
+            input.addEventListener("paste", function (e) {
                 e.preventDefault();
-                const absolutePasscode = getPasscodeString();
-                
-                if(absolutePasscode.length === 6) {
-                    verifyBtn.disabled = true;
-                    verifyBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Verifying Passkey Matrix...`;
-                    
-                    setTimeout(() => {
-                        alert(`Authorization Ledger Validated Successfully! Accessing dashboard profile parameters.`);
-                        window.location.href = "#"; // Target dashboard endpoint channel route
-                    }, 1400);
+                const pasted = (e.clipboardData.getData("text") || "")
+                    .replace(/\D/g, "")
+                    .substring(0, 6);
+                pasted.split("").forEach((digit, i) => {
+                    if (inputs[i]) inputs[i].value = digit;
+                });
+                if (pasted.length) {
+                    inputs[Math.min(pasted.length - 1, inputs.length - 1)].focus();
                 }
+                evaluateFormState();
             });
 
-            // Resend Click Actions Mock Trigger Integration
-            resendBtn.addEventListener("click", function() {
-                alert("Cryptographic token re-dispatched. Expiry clock window allocation refreshed cleanly.");
-                window.location.reload(); // Quick refresh loops simulation state matching
-            });
+        });
 
-            // Initialize form on first load state parameters
+        // Container-level paste (covers gap clicks)
+        fieldsContainer.addEventListener("paste", function (e) {
+            e.preventDefault();
+            const pasted = (e.clipboardData.getData("text") || "")
+                .replace(/\D/g, "")
+                .substring(0, 6);
+            pasted.split("").forEach((digit, i) => {
+                if (inputs[i]) inputs[i].value = digit;
+            });
+            if (pasted.length) {
+                inputs[Math.min(pasted.length - 1, inputs.length - 1)].focus();
+            }
+            evaluateFormState();
+        });
+
+        inputs[0].focus();
+
+        // -------------------------------------------------------
+        // SERVER COUNTDOWN
+        // -------------------------------------------------------
+
+        async function loadCountdown() {
+            try {
+
+                const response = await fetch(SERVER, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "/auth/update-passcode-timeframe-on-frontend",
+                        email: email
+                    })
+                });
+
+                const res = await response.json();
+
+                if (!res.success) {
+                    const hardExpired = res.data?.hard_expired === true;
+                    const redirect    = res.data?.redirect;
+
+                    if (redirect) {
+                        await Swal.fire({
+                            icon: "error",
+                            title: hardExpired ? "Session Expired" : "Error",
+                            text: res.message
+                        });
+                        window.location.href = redirect;
+                        return;
+                    }
+
+                    // Code expired but resend still allowed
+                    setExpiredState(false);
+                    return;
+                }
+
+                remainingSeconds = Number(res.data.remaining);
+                startCountdown();
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire({
+                    icon: "error",
+                    title: "Connection Error",
+                    text: "Unable to contact the server. Please try again."
+                });
+            }
+        }
+
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            resetVisuals();
+            enableInputs(true);
             evaluateFormState();
 
-            // --- 5. Scroll Reveal Engine Loading Systems ---
-            if (typeof ScrollReveal !== 'undefined') {
-                ScrollReveal().reveal('[data-reveal="fade-up"]', {
-                    origin: 'bottom',
-                    distance: '30px',
-                    duration: 900,
-                    easing: 'ease-out'
+            countdownDisplay.textContent = formatTime(remainingSeconds);
+
+            countdownInterval = setInterval(() => {
+                remainingSeconds--;
+
+                countdownDisplay.textContent = formatTime(Math.max(remainingSeconds, 0));
+
+                if (remainingSeconds <= 180) {
+                    countdownDisplay.classList.remove("text-dark");
+                    countdownDisplay.classList.add("text-danger");
+                    timerIcon.classList.remove("text-success");
+                    timerIcon.classList.add("text-danger", "animate-pulse");
+                }
+
+                if (remainingSeconds <= 0) {
+                    setExpiredState(false);
+                }
+
+            }, 1000);
+        }
+
+        loadCountdown();
+
+        // -------------------------------------------------------
+        // RESEND COOLDOWN
+        // -------------------------------------------------------
+
+        function startResendCooldown() {
+            let cooldown = 30;
+            resendBtn.disabled = true;
+            resendBtn.innerHTML = `Resend Code (Wait <span id="resendTimeoutCount">${cooldown}</span>s)`;
+
+            resendInterval = setInterval(() => {
+                cooldown--;
+                const counter = document.getElementById("resendTimeoutCount");
+                if (counter) counter.textContent = cooldown;
+
+                if (cooldown <= 0) {
+                    clearInterval(resendInterval);
+                    resendInterval = null;
+                    resendBtn.disabled = false;
+                    resendBtn.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Request Fresh 6-Digit Passcode Token`;
+                }
+            }, 1000);
+        }
+
+        // -------------------------------------------------------
+        // RESEND HANDLER
+        // -------------------------------------------------------
+
+        resendBtn.addEventListener("click", async function () {
+
+            resendBtn.disabled = true;
+            resendBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Sending...`;
+
+            try {
+
+                const response = await fetch(SERVER, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "/auth/resendCode",
+                        email: email
+                    })
+                });
+
+                const res = await response.json();
+
+                if (!res.success) {
+
+                    if (res.data?.redirect) {
+                        await Swal.fire({
+                            icon: "error",
+                            title: "Error",
+                            text: res.message
+                        });
+                        window.location.href = res.data.redirect;
+                        return;
+                    }
+
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Notice",
+                        text: res.message
+                    });
+
+                    resendBtn.disabled = false;
+                    resendBtn.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Request Fresh 6-Digit Passcode Token`;
+                    return;
+                }
+
+                Swal.fire({
+                    icon: "success",
+                    title: "Code Sent",
+                    text: res.message,
+                    timer: 2500,
+                    showConfirmButton: false
+                });
+
+                // Reset OTP boxes and restart with fresh 15 min
+                inputs.forEach(inp => inp.value = "");
+                inputs[0].focus();
+                enableInputs(true);
+                evaluateFormState();
+
+                remainingSeconds = res.data?.expires_in ?? 900;
+                startCountdown();
+                startResendCooldown();
+
+            } catch (err) {
+                console.error(err);
+                resendBtn.disabled = false;
+                resendBtn.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Request Fresh 6-Digit Passcode Token`;
+                Swal.fire({
+                    icon: "error",
+                    title: "Connection Error",
+                    text: "Unable to contact the server."
                 });
             }
 
         });
-    </script>
+
+        // -------------------------------------------------------
+        // VERIFY PASSCODE
+        // -------------------------------------------------------
+
+        passForm.addEventListener("submit", async function (e) {
+
+            e.preventDefault();
+
+            const passcode = getPasscodeString();
+
+            if (passcode.length !== 6) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Incomplete Code",
+                    text: "Please enter all 6 digits of your verification code."
+                });
+                return;
+            }
+
+            verifyBtn.disabled = true;
+            verifyBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Verifying Passkey Matrix...`;
+            enableInputs(false);
+
+            try {
+
+                const response = await fetch(SERVER, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "/auth/validate-passcode",
+                        email: email,
+                        passcode: passcode
+                    })
+                });
+
+                const res = await response.json();
+
+                if (res.success) {
+
+                    clearInterval(countdownInterval);
+
+                    await Swal.fire({
+                        icon: "success",
+                        title: "Verification Successful",
+                        text: res.message,
+                        allowOutsideClick: false,
+                        confirmButtonText: "Continue"
+                    });
+
+                    if (res.data?.redirect) {
+                        window.location.href = res.data.redirect;
+                    }
+
+                    return;
+                }
+
+                // Failed — restore form
+                enableInputs(true);
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = `<i class="bi bi-patch-check"></i> Authorize Secure Action`;
+                inputs.forEach(inp => inp.value = "");
+                inputs[0].focus();
+                evaluateFormState();
+
+                if (res.data?.redirect) {
+                    await Swal.fire({
+                        icon: "error",
+                        title: "Verification Failed",
+                        text: res.message
+                    });
+                    window.location.href = res.data.redirect;
+                    return;
+                }
+
+                Swal.fire({
+                    icon: "error",
+                    title: "Verification Failed",
+                    text: res.message
+                });
+
+            } catch (err) {
+                console.error(err);
+                enableInputs(true);
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = `<i class="bi bi-patch-check"></i> Authorize Secure Action`;
+                Swal.fire({
+                    icon: "error",
+                    title: "Connection Error",
+                    text: "Unable to connect to the server."
+                });
+            }
+
+        });
+
+        // -------------------------------------------------------
+        // SCROLL REVEAL
+        // -------------------------------------------------------
+
+        if (typeof ScrollReveal !== "undefined") {
+            ScrollReveal().reveal('[data-reveal="fade-up"]', {
+                origin: "bottom",
+                distance: "30px",
+                duration: 900,
+                easing: "ease-out"
+            });
+        }
+
+    });
+</script>
 </body>
 </html>

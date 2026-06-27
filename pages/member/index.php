@@ -643,9 +643,66 @@
 
     <!-- Bootstrap 5 JS Bundle Link -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Custom Viewport Layout Adaptive Interaction Script Engine -->
     <script>
+        const SERVER = "<?= $company_info['server'] ?>";
+        document.addEventListener("DOMContentLoaded", async () => {
+
+    try {
+
+        const response = await fetch(SERVER, {
+            method: "POST",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({action:"/auth/check-dedicated-account"})
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+
+            Swal.fire({
+                icon: "info",
+                title: "Dedicated Account",
+                html: `
+                    <p>You don't have a Dedicated Virtual Account yet.</p>
+                    <small>
+                        Create one now to receive bank transfers directly into your wallet.
+                    </small>
+                `,
+                showCancelButton: true,
+                confirmButtonColor: "#198754",
+                confirmButtonText: "Create Account",
+                cancelButtonText: "Skip",
+                allowOutsideClick: false
+            }).then((response) => {
+
+                if (response.isConfirmed) {
+
+                    createDedicatedAccount();
+
+                }
+
+            });
+
+        }
+
+    } catch (e) {
+
+        console.log(e);
+
+        Swal.fire({
+            icon: "error",
+            title: "Network Error",
+            text: "Unable to connect to the server."
+        });
+
+    }
+
+});
         document.addEventListener("DOMContentLoaded", function () {
             
             const menuToggleBtn = document.getElementById("mobileMenuToggle");

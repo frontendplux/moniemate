@@ -124,3 +124,109 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 
+CREATE TABLE IF NOT EXISTS dedicated_virtual_accounts (
+
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    uid VARCHAR(50) NOT NULL,
+
+    /* Savehaven */
+    provider ENUM('savehaven','paystack','stripe','quickteller','googlepay','Monnify','SafeMFB') NOT NULL DEFAULT 'savehaven',
+
+    customer_id VARCHAR(100) DEFAULT NULL,
+    virtual_account_id VARCHAR(100) DEFAULT NULL,
+
+    account_name VARCHAR(255) NOT NULL,
+    account_number VARCHAR(20) NOT NULL UNIQUE,
+    bank_name VARCHAR(150) NOT NULL,
+    bank_code VARCHAR(20) DEFAULT NULL,
+
+    currency VARCHAR(10) DEFAULT 'NGN',
+
+    status ENUM(
+        'pending',
+        'active',
+        'inactive',
+        'suspended',
+        'closed'
+    ) DEFAULT 'pending',
+
+    /* API Metadata */
+    reference VARCHAR(100) DEFAULT NULL,
+    session_id VARCHAR(100) DEFAULT NULL,
+
+    /* Raw provider response */
+    provider_response JSON DEFAULT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_uid (uid),
+    INDEX idx_account_number (account_number),
+    INDEX idx_virtual_account (virtual_account_id),
+    INDEX idx_customer (customer_id),
+    INDEX idx_status (status),
+
+    CONSTRAINT fk_dva_user
+        FOREIGN KEY (uid)
+        REFERENCES users(uid)
+        ON DELETE CASCADE
+
+);
+
+
+
+
+
+CREATE TABLE IF NOT EXISTS dedicated_virtual_account_transactions (
+
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    uid VARCHAR(50) NOT NULL,
+
+    provider ENUM('savehaven','paystack','stripe','quickteller','googlepay','Monnify','SafeMFB') NOT NULL DEFAULT 'savehaven',,
+
+    virtual_account_id VARCHAR(100) DEFAULT NULL,
+
+    account_number VARCHAR(20) NOT NULL,
+
+    reference VARCHAR(100) NOT NULL UNIQUE,
+    provider_reference VARCHAR(100) DEFAULT NULL,
+    session_id VARCHAR(100) DEFAULT NULL,
+
+    payer_name VARCHAR(255) DEFAULT NULL,
+    payer_account_number VARCHAR(30) DEFAULT NULL,
+    payer_bank VARCHAR(150) DEFAULT NULL,
+
+    amount DECIMAL(18,2) NOT NULL,
+    fee DECIMAL(18,2) DEFAULT 0.00,
+
+    currency VARCHAR(10) DEFAULT 'NGN',
+
+    narration TEXT,
+
+    status ENUM(
+        'pending',
+        'successful',
+        'failed',
+        'reversed'
+    ) DEFAULT 'pending',
+
+    provider_response JSON DEFAULT NULL,
+
+    received_at DATETIME DEFAULT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_uid(uid),
+    INDEX idx_reference(reference),
+    INDEX idx_account(account_number),
+    INDEX idx_session(session_id),
+
+    CONSTRAINT fk_dva_transaction_user
+        FOREIGN KEY(uid)
+        REFERENCES users(uid)
+        ON DELETE CASCADE
+
+);

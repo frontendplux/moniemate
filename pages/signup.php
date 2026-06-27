@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <link rel="icon" href="<?= $company_info['logo'] ?>" type="image/x-icon">
     <title>GFL Gateway - Setup Secure Cooperative Node</title>
     
     <!-- Google Fonts (Poppins) -->
@@ -137,15 +138,15 @@
                                 <label for="firstName" class="form-label fw-medium text-dark small">First Name</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-person"></i></span>
-                                    <input type="text" id="lastName" class="form-control form-control-lg border-start-0 fs-6 bg-light" placeholder="firstname" required>
+                                    <input type="text" id="firstName" class="form-control form-control-lg border-start-0 fs-6 bg-light" placeholder="firstname" required>
                                     <div class="invalid-feedback">Please input your matching compliance fullname.</div>
                                 </div>
                             </div>
                             <div class="mb-3 w-100">
-                                <label for="regName" class="form-label fw-medium text-dark small">Last Name</label>
+                                <label for="lastName" class="form-label fw-medium text-dark small">Last Name</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-person"></i></span>
-                                    <input type="text" id="regName" class="form-control form-control-lg border-start-0 fs-6 bg-light" placeholder="lastname" required>
+                                    <input type="text" id="lastName" class="form-control form-control-lg border-start-0 fs-6 bg-light" placeholder="lastname" required>
                                     <div class="invalid-feedback">Please input your matching compliance fullname.</div>
                                 </div>
                             </div>
@@ -158,16 +159,6 @@
                                 <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-envelope"></i></span>
                                 <input type="email" id="regEmail" class="form-control form-control-lg border-start-0 fs-6 bg-light" placeholder="name@example.com" required>
                                 <div class="invalid-feedback">A valid communication email coordinate is mandatory.</div>
-                            </div>
-                        </div>
-
-                        <!-- Row 3: Phone Number -->
-                        <div class="mb-3">
-                            <label for="regPhone" class="form-label fw-medium text-dark small">Phone Number</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-phone"></i></span>
-                                <input type="tel" id="regPhone" class="form-control form-control-lg border-start-0 fs-6 bg-light" placeholder="e.g. +2348012345678" maxlength="11" required>
-                                <div class="invalid-feedback">Please submit a valid 11-digit registered telephone lane.</div>
                             </div>
                         </div>
 
@@ -194,7 +185,7 @@
                         </div>
 
                         <!-- Submit Registration Button -->
-                        <button type="submit" class="btn btn-success btn-lg w-100 rounded-pill py-3 fw-medium text-white shadow-sm d-flex align-items-center justify-content-center gap-2 btn-gfl-success">
+                        <button id="btnsubmit" type="submit" class="btn btn-success btn-lg w-100 rounded-pill py-3 fw-medium text-white shadow-sm d-flex align-items-center justify-content-center gap-2 btn-gfl-success">
                             <i class="bi bi-person-plus-fill"></i> Initialize My Account
                         </button>
                     </form>
@@ -212,47 +203,60 @@
         </div>
     </div>
 
-    <!-- Bootstrap 5 JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- ScrollReveal CDN -->
-    <script src="https://unpkg.com/scrollreveal"></script>
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Custom Form Mechanics Logic Scripts -->
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
+<!-- ScrollReveal CDN -->
+<script src="https://unpkg.com/scrollreveal"></script>
 
-    // PASSWORD TOGGLE
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    // Get referral code from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const referral = (urlParams.get("ref") || "").trim();
+
+    // Password Toggle
     const toggleBtn = document.getElementById("toggleRegPassword");
     const passField = document.getElementById("regPassword");
     const toggleIcon = document.getElementById("toggleRegIcon");
 
-    if (toggleBtn && passField) {
+    if (toggleBtn && passField && toggleIcon) {
         toggleBtn.addEventListener("click", () => {
-
             if (passField.type === "password") {
                 passField.type = "text";
-                toggleIcon.classList.remove("bi-eye");
-                toggleIcon.classList.add("bi-eye-slash");
+                toggleIcon.classList.replace("bi-eye", "bi-eye-slash");
             } else {
                 passField.type = "password";
-                toggleIcon.classList.remove("bi-eye-slash");
-                toggleIcon.classList.add("bi-eye");
+                toggleIcon.classList.replace("bi-eye-slash", "bi-eye");
             }
-
         });
     }
 
-    // PHONE NUMBERS ONLY
-    const regPhone = document.getElementById("regPhone");
-
-    if (regPhone) {
-        regPhone.addEventListener("input", function () {
-            this.value = this.value.replace(/\D/g, '');
+    // ScrollReveal
+    if (typeof ScrollReveal !== "undefined") {
+        ScrollReveal().reveal("[data-reveal]", {
+            distance: "40px",
+            duration: 800,
+            interval: 150,
+            origin: "bottom"
         });
     }
 
-    // SIGNUP FORM
     const form = document.getElementById("gflSignUpForm");
+    if (!form) return;
+
+    const btnSubmit = document.getElementById("btnsubmit");
+    const defaultButton =
+        "<i class='bi bi-person-plus-fill'></i> Initialize My Account";
+
+    function resetButton() {
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = defaultButton;
+    }
 
     form.addEventListener("submit", async (e) => {
 
@@ -264,119 +268,64 @@
             return;
         }
 
-        const firstName =
-            document.getElementById("lastName").value.trim();
+        const firstName = document.getElementById("firstName").value.trim();
+        const lastName = document.getElementById("lastName").value.trim();
+        const email = document.getElementById("regEmail").value.trim();
+        const password = document.getElementById("regPassword").value;
+        const terms = document.getElementById("termsCheck").checked;
 
-        const lastName =
-            document.getElementById("regName").value.trim();
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML =
+            "<span class='spinner-border spinner-border-sm me-2'></span>Processing...";
 
-        const email =
-            document.getElementById("regEmail").value.trim();
-
-        const phone =
-            document.getElementById("regPhone").value.trim();
-
-        const password =
-            document.getElementById("regPassword").value;
-
-        const terms =
-            document.getElementById("termsCheck").checked;
-
-        // NAME VALIDATION
         const nameRegex = /^[A-Za-z\s]{2,50}$/;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
         if (!nameRegex.test(firstName)) {
-            Swal.fire({
-                icon: "error",
-                title: "Invalid First Name",
-                text: "Enter a valid first name."
-            });
-            return;
+            resetButton();
+            return Swal.fire("Invalid First Name", "Enter a valid first name.", "error");
         }
 
         if (!nameRegex.test(lastName)) {
-            Swal.fire({
-                icon: "error",
-                title: "Invalid Last Name",
-                text: "Enter a valid last name."
-            });
-            return;
+            resetButton();
+            return Swal.fire("Invalid Last Name", "Enter a valid last name.", "error");
         }
-
-        // EMAIL VALIDATION
-        const emailRegex =
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
         if (!emailRegex.test(email)) {
-            Swal.fire({
-                icon: "error",
-                title: "Invalid Email",
-                text: "Please enter a valid email address."
-            });
-            return;
+            resetButton();
+            return Swal.fire("Invalid Email", "Enter a valid email address.", "error");
         }
 
-        // PHONE VALIDATION
-        if (!/^0\d{10}$/.test(phone)) {
-            Swal.fire({
-                icon: "error",
-                title: "Invalid Phone Number",
-                text: "Phone number must be 11 digits."
-            });
-            return;
-        }
-
-        // PASSWORD VALIDATION
         if (password.length < 8) {
-            Swal.fire({
-                icon: "error",
-                title: "Weak Password",
-                text: "Password must be at least 8 characters."
-            });
-            return;
+            resetButton();
+            return Swal.fire("Weak Password", "Password must be at least 8 characters.", "error");
         }
 
         if (!/[A-Z]/.test(password)) {
-            Swal.fire({
-                icon: "error",
-                title: "Weak Password",
-                text: "Password must contain at least one uppercase letter."
-            });
-            return;
+            resetButton();
+            return Swal.fire("Weak Password", "Password must contain at least one uppercase letter.", "error");
         }
 
         if (!/[a-z]/.test(password)) {
-            Swal.fire({
-                icon: "error",
-                title: "Weak Password",
-                text: "Password must contain at least one lowercase letter."
-            });
-            return;
+            resetButton();
+            return Swal.fire("Weak Password", "Password must contain at least one lowercase letter.", "error");
         }
 
         if (!/[0-9]/.test(password)) {
-            Swal.fire({
-                icon: "error",
-                title: "Weak Password",
-                text: "Password must contain at least one number."
-            });
-            return;
+            resetButton();
+            return Swal.fire("Weak Password", "Password must contain at least one number.", "error");
         }
 
         if (!terms) {
-            Swal.fire({
-                icon: "error",
-                title: "Agreement Required",
-                text: "You must accept the terms."
-            });
-            return;
+            resetButton();
+            return Swal.fire("Agreement Required", "You must accept the terms.", "error");
         }
 
         try {
 
             Swal.fire({
                 title: "Creating Account...",
-                text: "Please wait",
+                text: "Please wait...",
                 allowOutsideClick: false,
                 allowEscapeKey: false,
                 showConfirmButton: false,
@@ -390,13 +339,17 @@
                 },
                 body: JSON.stringify({
                     action: "/auth/register",
-                    first_name: firstName,
-                    last_name: lastName,
-                    email: email,
-                    phone: phone,
-                    password: password
+                    firstName,
+                    lastName,
+                    email,
+                    password,
+                    ref: referral
                 })
             });
+
+            if (!response.ok) {
+                throw new Error("Server returned " + response.status);
+            }
 
             const res = await response.json();
 
@@ -407,38 +360,51 @@
                 await Swal.fire({
                     icon: "success",
                     title: "Registration Successful",
-                    text: res.message || "Account created successfully.",
-                    timer: 2000,
+                    text: res.message,
+                    timer: 1800,
                     showConfirmButton: false
                 });
 
                 if (res.data?.redirect) {
-                    window.location.href = res.data.redirect;
+                    const emailParam = res.data.email
+                        ? "?u=" + encodeURIComponent(res.data.email)
+                        : "";
+
+                    window.location.href = res.data.redirect + emailParam;
                 }
 
             } else {
 
+                resetButton();
+
                 Swal.fire({
                     icon: "error",
                     title: "Registration Failed",
-                    text: res.message || "Unable to create account."
+                    text: res.message || "Unable to register."
                 });
 
             }
 
-        } catch (error) {
+        } catch (err) {
 
-            console.error(error);
+            Swal.close();
+            resetButton();
+
+            console.error(err);
 
             Swal.fire({
                 icon: "error",
                 title: "Connection Error",
-                text: "Unable to connect to the server."
+                text: err.message || "Unable to connect to the server."
             });
 
         }
+
     });
+
 });
-  </script>
+</script>
+
+
 </body>
 </html>

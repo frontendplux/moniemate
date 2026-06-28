@@ -125,7 +125,7 @@ class auth
     }
 }
    include __DIR__."/../conn.php";
-   include __DIR__."/mail/mailer.php";
+   include __DIR__."/xender/xend.php";
    $data=json_decode(file_get_contents("php://input"), true) ?? $_POST ?? [];
    $action=$data['action'];
    switch ($action) {

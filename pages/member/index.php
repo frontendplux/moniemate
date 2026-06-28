@@ -1,7 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <?php
+      include __DIR__."/security.php";
+      class home{
+        public function __construct($conn) {
+            $this->conn = $conn;
+        }
+      }
+      $MemberData=$auth->isLogin()['data']['user'];
+    ?>
     <meta charset="UTF-8">
+    <link rel="icon" href="<?= $company_info['logo'] ?>" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GFL Member Portal - Unified Wealth Matrix</title>
     
@@ -203,17 +213,17 @@
                 </span>
                 <span class="fs-4 fw-bold text-dark">GFL<span class="text-success">.</span></span>
             </a>
-            <span class="badge bg-light text-success border border-success-subtle rounded-pill px-3 py-1.5 fw-medium d-none d-sm-inline-block">
+            <!-- <span class="badge bg-light text-success border border-success-subtle rounded-pill px-3 py-1.5 fw-medium d-none d-sm-inline-block">
                 <i class="bi bi-shield-fill-check me-1"></i> Account Mode: Verified Node
-            </span>
+            </span> -->
         </div>
 
         <!-- Header Right Profile Utilities Control Desk -->
         <div class="d-flex align-items-center gap-3">
             <!-- System Status Indicator Clock -->
-            <div class="text-end d-none d-md-block small text-muted font-monospace me-2">
+            <!-- <div class="text-end d-none d-md-block small text-muted font-monospace me-2">
                 <span class="text-warning"><i class="bi bi-exclamation-circle-fill me-1"></i> Saturday Cutoff:</span> 4d 02h left
-            </div>
+            </div> -->
             
             <!-- Quick Notification Alerts Vector Dropdown -->
             <div class="position-relative cursor-pointer text-secondary px-2">
@@ -224,11 +234,14 @@
             <!-- Profile User String Avatar Identity Block -->
             <div class="d-flex align-items-center gap-2 border-start ps-3">
                 <div class="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center fw-bold text-uppercase shadow-sm" style="width: 40px; height: 40px; font-size: 0.9rem;">
-                    SA
+                    <?= strtoupper(
+                        substr($auth->isLogin()['data']['user']['first_name'], 0, 1) .
+                        substr($auth->isLogin()['data']['user']['last_name'], 0, 1)
+                    ) ?>
                 </div>
                 <div class="d-none d-sm-block">
-                    <h6 class="mb-0 fw-semibold text-dark small">Samuel Adebayo</h6>
-                    <span class="text-muted d-block font-monospace" style="font-size: 0.68rem;">ID: GFL-109232</span>
+                    <h6 class="mb-0 fw-semibold text-dark small text-capitalize"><?= $auth->isLogin()['data']['user']['first_name']."&nbsp;".$auth->isLogin()['data']['user']['last_name'] ?></h6>
+                    <span class="text-muted d-block font-monospace" style="font-size: 0.68rem;">ID: <?= htmlspecialchars($auth->isLogin()['data']['user']['uid']) ?></span>
                 </div>
             </div>
         </div>
@@ -243,7 +256,7 @@
                 <!-- Navigation Option Links Matrix -->
                 <div class="vstack">
                     <span class="px-4 text-uppercase text-muted fw-bold tracking-wider mb-2 d-block" style="font-size: 0.68rem;">Main Accounts</span>
-                    <a href="#" class="nav-menu-link active"><i class="bi bi-grid-1x2-fill"></i> Summary Console</a>
+                    <a href="#" class="nav-menu-link active"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
                     <a href="#" class="nav-menu-link"><i class="bi bi-cash-coin"></i> Savings Ledger Tiers</a>
                     <a href="#" class="nav-menu-link"><i class="bi bi-basket-fill"></i> Food Basket Slots</a>
                     <a href="#" class="nav-menu-link"><i class="bi bi-bank"></i> Bank Transfers</a>
@@ -274,17 +287,30 @@
                 <div class="row align-items-center justify-content-between mb-4 g-3">
                     <div class="col-12 col-md-auto">
                         <h3 class="fw-bold text-dark mb-1">Overview Dashboard</h3>
-                        <p class="text-secondary small mb-0">Welcome back, Samuel. Manage your active banking metrics and cooperative allocations.</p>
+                        <p class="text-secondary small mb-0">Welcome back, <?= htmlspecialchars($auth->isLogin()['data']['user']['first_name'])  ?>. Manage your active banking metrics and cooperative allocations.</p>
                     </div>
                     <!-- Virtual Account Number Callout Box (Like OPay top parameters view) -->
                     <div class="col-12 col-md-auto">
-                        <div class="bg-white px-4 py-3 border rounded-4 d-flex align-items-center justify-content-between gap-4 shadow-sm">
-                            <div>
-                                <span class="text-muted d-block text-uppercase font-monospace fw-bold" style="font-size: 0.65rem; tracking-wider">Dynamic Settlement Bank</span>
-                                <h6 class="fw-bold text-dark mb-0 font-monospace">Wema Bank • 9034291832</h6>
+                       <div class="bg-white px-4 py-3 border rounded-4 d-flex align-items-center justify-content-between gap-4 shadow-sm">
+                        <div>
+                                    <span class="text-muted d-block text-uppercase font-monospace fw-bold" style="font-size: 0.65rem; letter-spacing:1px;">
+                                        Wallet P2P Account
+                                    </span>
+
+                                    <h6 class="fw-bold text-dark mb-0 font-monospace">
+                                        <?= $company_info['name'] ?? "" ?> •
+                                        <span id="accountNumber"><?= htmlspecialchars($auth->isLogin()['data']['user']['account_number']) ?></span>
+                                    </h6>
+                                </div>
+
+                                <button
+                                    id="copyAccountBtn"
+                                    class="btn btn-success-subtle text-success btn-sm rounded-pill px-2"
+                                    data-account="<?= htmlspecialchars($auth->isLogin()['data']['user']['account_number']) ?>"
+                                    title="Copy Account Number">
+                                    <i class="bi bi-copy"></i>
+                                </button>
                             </div>
-                            <button class="btn btn-success-subtle text-success btn-sm rounded-pill px-2.5" title="Copy Number Link"><i class="bi bi-copy"></i></button>
-                        </div>
                     </div>
                 </div>
 
@@ -644,6 +670,7 @@
     <!-- Bootstrap 5 JS Bundle Link -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Custom Viewport Layout Adaptive Interaction Script Engine -->
     <script>
         const SERVER = "<?= $company_info['server'] ?>";
@@ -681,9 +708,7 @@
             }).then((response) => {
 
                 if (response.isConfirmed) {
-
-                    createDedicatedAccount();
-
+                    window.location.href="/create-virtual-account"
                 }
 
             });
@@ -723,25 +748,77 @@
                 });
             }
 
-            // 2. Mock Balance Masking Visibility Toggler Trigger (Like OPay Feature)
-            const balanceEye = document.querySelector(".balance-master-card .bi-eye-fill");
-            const balanceString = document.querySelector(".balance-master-card h2");
-            let isMasked = false;
+           const balanceEye = document.getElementById("toggleBalance");
+const balanceText = document.getElementById("walletBalance");
 
-            if (balanceEye && balanceString) {
-                balanceEye.addEventListener("click", function() {
-                    isMasked = !isMasked;
-                    if (isMasked) {
-                        this.classList.replace("bi-eye-fill", "bi-eye-slash-fill");
-                        balanceString.innerHTML = "•••••••<span class='fs-5 fw-normal'></span>";
-                    } else {
-                        this.classList.replace("bi-eye-slash-fill", "bi-eye-fill");
-                        balanceString.innerHTML = "₦142,500<span class='fs-5 fw-normal'>.00</span>";
-                    }
-                });
-            }
+if (balanceEye && balanceText) {
+
+    let hidden = localStorage.getItem("hideBalance") === "true";
+
+    function updateBalance() {
+
+        if (hidden) {
+            balanceText.innerHTML = "₦••••••";
+            balanceEye.classList.remove("bi-eye-fill");
+            balanceEye.classList.add("bi-eye-slash-fill");
+        } else {
+            balanceText.innerHTML = balanceText.dataset.balance;
+            balanceEye.classList.remove("bi-eye-slash-fill");
+            balanceEye.classList.add("bi-eye-fill");
+        }
+
+        localStorage.setItem("hideBalance", hidden);
+    }
+
+    updateBalance();
+
+    balanceEye.addEventListener("click", function () {
+        hidden = !hidden;
+        updateBalance();
+    });
+
+}
 
         });
-    </script>
+
+
+document.getElementById("copyAccountBtn").addEventListener("click", async function () {
+    const accountNumber = this.dataset.account;
+    try {
+        await navigator.clipboard.writeText(accountNumber);
+
+        Swal.fire({
+            icon: "success",
+            title: "Copied!",
+            text: "Account number copied successfully.",
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true
+        });
+
+    } catch (err) {
+        // Fallback for older browsers
+        const input = document.createElement("input");
+        input.value = accountNumber;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+
+        Swal.fire({
+            icon: "success",
+            title: "Copied!",
+            text: "Account number copied successfully.",
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true
+        });
+    }
+});
+</script>
 </body>
 </html>

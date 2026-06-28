@@ -1535,6 +1535,637 @@ case '/auth/forgot-password':
     ]);
 break;
 
+case '/auth/verify-reset-otp':
+
+    $email    = base64_decode(trim($data['email']    ?? ''));
+    $passcode = trim($data['passcode'] ?? '');
+
+    // ── 1. Validate inputs ──────────────────────────────────────────────
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid session. Please start the recovery process again.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    if (!preg_match('/^\d{6}$/', $passcode)) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid reset code format.'
+        ]);
+        break;
+    }
+
+    // ── 2. Lookup user ──────────────────────────────────────────────────
+    $query = $conn->prepare("
+        SELECT
+            uid,
+            email_verified,
+            account_status,
+            account_frozen,
+            login_token,
+            login_token_expires
+        FROM users
+        WHERE email = ?
+        LIMIT 1
+    ");
+    $query->bind_param("s", $email);
+    $query->execute();
+    $user = $query->get_result()->fetch_assoc();
+    $query->close();
+
+    if (!$user) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Account not found.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    // ── 3. Account guards ───────────────────────────────────────────────
+    if ((int)$user['email_verified'] === 0) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'This account has not been verified yet.',
+            'data'    => [
+                'redirect' => '/confirm-passcode',
+                'email'    => base64_encode($email)
+            ]
+        ]);
+        break;
+    }
+
+    switch ($user['account_status']) {
+        case 'suspended':
+        case 'blocked':
+        case 'closed':
+            echo json_encode([
+                'success' => false,
+                'message' => 'This account is not accessible. Please contact support.',
+                'data'    => ['redirect' => '/login']
+            ]);
+            exit;
+    }
+
+    if ((int)$user['account_frozen'] === 1) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'This account is currently frozen. Please contact support.',
+            'data'    => ['redirect' => '/login']
+        ]);
+        break;
+    }
+
+    // ── 4. Token existence check ────────────────────────────────────────
+    if (empty($user['login_token']) || empty($user['login_token_expires'])) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'No reset code found. Please request a new one.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    // ── 5. Expiry check BEFORE value check ──────────────────────────────
+    //       Prevents leaking whether a code is correct after it expires.
+    if (strtotime($user['login_token_expires']) < time()) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Reset code has expired. Please request a new one.',
+            'data'    => [
+                'redirect' => '/reset-password',
+                'email'    => base64_encode($email),
+                'expired'  => true
+            ]
+        ]);
+        break;
+    }
+
+    // ── 6. Verify code value ────────────────────────────────────────────
+    if ($user['login_token'] !== $passcode) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Incorrect reset code. Please try again.'
+        ]);
+        break;
+    }
+
+    // ── 7. Valid — do NOT consume the token yet ─────────────────────────
+    //       It is cleared only on successful /auth/reset-password,
+    //       preventing step-skipping attacks on the final endpoint.
+    echo json_encode([
+        'success' => true,
+        'message' => 'Reset code verified. Please set your new password.'
+    ]);
+
+break;
+
+// ===========================================================================
+
+case '/auth/forgot-password-resend':
+
+    $email = base64_decode(trim($data['email'] ?? ''));
+
+    // ── 1. Validate email ───────────────────────────────────────────────
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid session. Please start the recovery process again.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    // ── 2. Lookup user ──────────────────────────────────────────────────
+    $query = $conn->prepare("
+        SELECT
+            uid,
+            first_name,
+            email_verified,
+            account_status,
+            account_frozen,
+            login_token,
+            login_token_expires
+        FROM users
+        WHERE email = ?
+        LIMIT 1
+    ");
+    $query->bind_param("s", $email);
+    $query->execute();
+    $user = $query->get_result()->fetch_assoc();
+    $query->close();
+
+    if (!$user) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Account not found.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    // ── 3. Account guards ───────────────────────────────────────────────
+    if ((int)$user['email_verified'] === 0) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'This account has not been verified.',
+            'data'    => [
+                'redirect' => '/confirm-passcode',
+                'email'    => base64_encode($email)
+            ]
+        ]);
+        break;
+    }
+
+    switch ($user['account_status']) {
+        case 'suspended':
+        case 'blocked':
+        case 'closed':
+            echo json_encode([
+                'success' => false,
+                'message' => 'This account is not accessible. Please contact support.',
+                'data'    => ['redirect' => '/login']
+            ]);
+            exit;
+    }
+
+    if ((int)$user['account_frozen'] === 1) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'This account is currently frozen. Please contact support.',
+            'data'    => ['redirect' => '/login']
+        ]);
+        break;
+    }
+
+    $now     = time();
+    $expires = !empty($user['login_token_expires'])
+        ? strtotime($user['login_token_expires'])
+        : null;
+
+    // ── 4. Code still active — do not resend ───────────────────────────
+    if (
+        !empty($user['login_token']) &&
+        $expires !== null &&
+        $expires > $now
+    ) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'A reset code has already been sent and is still active. Please check your email.'
+        ]);
+        break;
+    }
+
+    // ── 5. Hard expiry — recovery window closed (>30 min since expiry) ──
+    if (
+        !empty($user['login_token']) &&
+        $expires !== null &&
+        ($now - $expires) > 1800
+    ) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Your recovery session has fully expired. Please start the recovery process again.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    // ── 6. Generate new reset OTP ───────────────────────────────────────
+    $resetToken  = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $resetExpiry = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+
+    $update = $conn->prepare("
+        UPDATE users
+        SET
+            login_token         = ?,
+            login_token_expires = ?
+        WHERE uid = ?
+    ");
+    $update->bind_param("sss", $resetToken, $resetExpiry, $user['uid']);
+    $update->execute();
+
+    if ($update->affected_rows === 0) {
+        $update->close();
+        echo json_encode([
+            'success' => false,
+            'message' => 'Failed to generate a new reset code. Please try again.'
+        ]);
+        break;
+    }
+
+    $update->close();
+
+    // ── 7. Send email ───────────────────────────────────────────────────
+    $title = 'New Password Reset Code – YourBank';
+
+    $body = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset='UTF-8'>
+        <style>
+            body { margin:0; padding:0; background:#f5f5f5; font-family:Arial,sans-serif; }
+            .container { max-width:520px; margin:40px auto; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.08); }
+            .header { background:#198754; color:#fff; text-align:center; padding:30px; }
+            .header h2 { margin:0; font-size:20px; }
+            .content { padding:30px; color:#333; line-height:1.8; }
+            .otp { margin:24px 0; padding:20px; text-align:center; background:#eef8f2; border:2px dashed #198754; border-radius:8px; }
+            .otp h1 { margin:0; letter-spacing:10px; color:#198754; font-size:38px; }
+            .otp p { margin:8px 0 0; font-size:12px; color:#888; }
+            .notice { background:#fff8e1; border-left:4px solid #f59e0b; padding:12px 16px; border-radius:4px; font-size:13px; color:#92400e; margin-top:20px; }
+            .footer { text-align:center; color:#aaa; font-size:12px; padding:20px; border-top:1px solid #f0f0f0; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'><h2>🔑 New Password Reset Code</h2></div>
+            <div class='content'>
+                <p>Hi <strong>{$user['first_name']}</strong>,</p>
+                <p>You requested a new password reset code. Use it below to proceed with your account recovery. It expires in <strong>15 minutes</strong>.</p>
+                <div class='otp'>
+                    <h1>{$resetToken}</h1>
+                    <p>Do not share this code with anyone.</p>
+                </div>
+                <div class='notice'>
+                    ⚠️ If you did not request this, please ignore this email.
+                    Your account remains secure and no changes have been made.
+                </div>
+            </div>
+            <div class='footer'>&copy; " . date('Y') . " YourBank. All Rights Reserved.</div>
+        </div>
+    </body>
+    </html>
+    ";
+
+    sendMailByMe($email, $title, $body);
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'A new reset code has been sent to your email.',
+        'data'    => [
+            'email'      => base64_encode($email),
+            'expires_in' => 900
+        ]
+    ]);
+
+break;
+
+// ===========================================================================
+
+case '/auth/reset-password':
+
+    $email    = base64_decode(trim($data['email']    ?? ''));
+    $passcode = trim($data['passcode'] ?? '');
+    $password = trim($data['password'] ?? '');
+
+    // ── 1. Validate inputs ──────────────────────────────────────────────
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid session. Please start the recovery process again.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    if (!preg_match('/^\d{6}$/', $passcode)) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid reset code.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    // Same regex enforced on the frontend
+    if (!preg_match('/^(?=.*[A-Z])(?=.*\d).{6,}$/', $password)) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Password must be at least 6 characters with one uppercase letter and one number.'
+        ]);
+        break;
+    }
+
+    // ── 2. Lookup user ──────────────────────────────────────────────────
+    $query = $conn->prepare("
+        SELECT
+            uid,
+            first_name,
+            email_verified,
+            account_status,
+            account_frozen,
+            login_token,
+            login_token_expires
+        FROM users
+        WHERE email = ?
+        LIMIT 1
+    ");
+    $query->bind_param("s", $email);
+    $query->execute();
+    $user = $query->get_result()->fetch_assoc();
+    $query->close();
+
+    if (!$user) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Account not found.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    // ── 3. Account guards ───────────────────────────────────────────────
+    if ((int)$user['email_verified'] === 0) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'This account has not been verified.',
+            'data'    => [
+                'redirect' => '/confirm-passcode',
+                'email'    => base64_encode($email)
+            ]
+        ]);
+        break;
+    }
+
+    switch ($user['account_status']) {
+        case 'suspended':
+        case 'blocked':
+        case 'closed':
+            echo json_encode([
+                'success' => false,
+                'message' => 'This account is not accessible. Please contact support.',
+                'data'    => ['redirect' => '/login']
+            ]);
+            exit;
+    }
+
+    if ((int)$user['account_frozen'] === 1) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'This account is currently frozen. Please contact support.',
+            'data'    => ['redirect' => '/login']
+        ]);
+        break;
+    }
+
+    // ── 4. Token existence ──────────────────────────────────────────────
+    if (empty($user['login_token']) || empty($user['login_token_expires'])) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'No active reset session found. Please start again.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    // ── 5. Expiry check BEFORE value check ──────────────────────────────
+    if (strtotime($user['login_token_expires']) < time()) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Reset code has expired. Please request a new one.',
+            'data'    => [
+                'redirect' => '/reset-password',
+                'email'    => base64_encode($email)
+            ]
+        ]);
+        break;
+    }
+
+    // ── 6. Final OTP check — guards against direct POST attacks ─────────
+    if ($user['login_token'] !== $passcode) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid reset code. Please start the recovery process again.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    // ── 7. Hash new password ────────────────────────────────────────────
+    $newHash = password_hash($password, PASSWORD_BCRYPT);
+
+    // ── 8. Update DB ────────────────────────────────────────────────────
+    //       Clear token, reset lockout counter, nullify last_login
+    //       so the next login writes a clean fresh timestamp.
+    $update = $conn->prepare("
+        UPDATE users
+        SET
+            password_hash       = ?,
+            login_token         = NULL,
+            login_token_expires = NULL,
+            login_attempts      = 0,
+            last_login          = NULL
+        WHERE uid = ?
+    ");
+    $update->bind_param("ss", $newHash, $user['uid']);
+    $update->execute();
+
+    if ($update->affected_rows === 0) {
+        $update->close();
+        echo json_encode([
+            'success' => false,
+            'message' => 'Failed to update your password. Please try again.'
+        ]);
+        break;
+    }
+
+    $update->close();
+
+    // ── 9. Destroy any active PHP session ──────────────────────────────
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_unset();
+        session_destroy();
+    }
+
+    // ── 10. Confirmation email ──────────────────────────────────────────
+    $changedAt = date('D, d M Y \a\t H:i T');
+    $ip        = $_SERVER['REMOTE_ADDR']                        ?? 'Unknown';
+    $device    = substr($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown', 0, 80);
+
+    $title = 'Your Password Has Been Reset – YourBank';
+
+    $body = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset='UTF-8'>
+        <style>
+            body { margin:0; padding:0; background:#f5f5f5; font-family:Arial,sans-serif; }
+            .container { max-width:520px; margin:40px auto; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.08); }
+            .header { background:#198754; color:#fff; text-align:center; padding:30px; }
+            .header h2 { margin:0; font-size:20px; }
+            .content { padding:30px; color:#333; line-height:1.8; }
+            .info-table { width:100%; border-collapse:collapse; margin:20px 0; font-size:14px; }
+            .info-table td { padding:10px 12px; border-bottom:1px solid #f0f0f0; }
+            .info-table td:first-child { color:#888; width:35%; font-weight:bold; }
+            .success-box { background:#eef8f2; border-left:4px solid #198754; padding:12px 16px; border-radius:4px; font-size:13px; color:#146c43; margin-bottom:20px; }
+            .notice { background:#fff8e1; border-left:4px solid #f59e0b; padding:12px 16px; border-radius:4px; font-size:13px; color:#92400e; margin-top:16px; }
+            .footer { text-align:center; color:#aaa; font-size:12px; padding:20px; border-top:1px solid #f0f0f0; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'><h2>✅ Password Successfully Reset</h2></div>
+            <div class='content'>
+                <p>Hi <strong>{$user['first_name']}</strong>,</p>
+                <div class='success-box'>Your YourBank account password has been successfully updated.</div>
+                <p>Here are the details of the change:</p>
+                <table class='info-table'>
+                    <tr><td>Time</td><td>{$changedAt}</td></tr>
+                    <tr><td>IP Address</td><td>" . htmlspecialchars($ip) . "</td></tr>
+                    <tr><td>Device</td><td>" . htmlspecialchars($device) . "</td></tr>
+                </table>
+                <div class='notice'>
+                    ⚠️ If you did not make this change, please contact our support team immediately
+                    as your account may be at risk.
+                </div>
+            </div>
+            <div class='footer'>&copy; " . date('Y') . " YourBank. All Rights Reserved.</div>
+        </div>
+    </body>
+    </html>
+    ";
+
+    sendMailByMe($email, $title, $body);
+
+    // ── 11. Respond ─────────────────────────────────────────────────────
+    echo json_encode([
+        'success' => true,
+        'message' => 'Your password has been reset successfully. Please log in with your new password.',
+        'data'    => ['redirect' => '/login']
+    ]);
+
+break;
+
+case '/auth/reset-timeframe':
+
+    $email = base64_decode(trim($data['email'] ?? ''));
+
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid session.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    $query = $conn->prepare("
+        SELECT
+            login_token,
+            login_token_expires,
+            account_status
+        FROM users
+        WHERE email = ?
+        LIMIT 1
+    ");
+    $query->bind_param("s", $email);
+    $query->execute();
+    $user = $query->get_result()->fetch_assoc();
+    $query->close();
+
+    if (!$user) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Account not found.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    // Block inaccessible accounts
+    if (in_array($user['account_status'], ['suspended', 'blocked', 'closed'])) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'This account is not accessible.',
+            'data'    => ['redirect' => '/login']
+        ]);
+        break;
+    }
+
+    if (empty($user['login_token']) || empty($user['login_token_expires'])) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'No reset session found.',
+            'data'    => ['redirect' => '/forgot-password']
+        ]);
+        break;
+    }
+
+    $expires   = strtotime($user['login_token_expires']);
+    $remaining = $expires - time();
+
+    if ($remaining <= 0) {
+        $hardExpired = (time() - $expires) > 1800;
+        echo json_encode([
+            'success' => false,
+            'message' => $hardExpired
+                ? 'Recovery session fully expired. Please start again.'
+                : 'Reset code has expired.',
+            'data'    => [
+                'remaining'    => 0,
+                'expired'      => true,
+                'hard_expired' => $hardExpired
+            ]
+        ]);
+        break;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Timer loaded.',
+        'data'    => [
+            'remaining'  => $remaining,
+            'expired'    => false,
+            'expires_at' => $user['login_token_expires']
+        ]
+    ]);
+
+break;
+
 
 // forget password to complete tomorrow 
 

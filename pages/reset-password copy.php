@@ -246,6 +246,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/scrollreveal"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
@@ -255,28 +256,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const SERVER = "<?= $company_info['server'] ?>";
 
-    // ── Read + decode email from ?u= param ──────────────────────────────
-    // Matches the convention used on confirm-passcode page.
-    // forgot-password PHP redirects to: /reset-password?u=<base64email>
-    const rawParam = new URLSearchParams(window.location.search).get("u") || "";
+    // Read email from ?email= param (base64-encoded)
+    const rawParam = new URLSearchParams(window.location.search).get("email") || "";
     let email = "";
 
-    try { email = atob(decodeURIComponent(rawParam)); } catch (e) { email = ""; }
+    try {
+        email = atob(rawParam);
+    } catch (e) {
+        email = "";
+    }
 
     if (!email || !email.includes("@")) {
         Swal.fire({
             icon:              "error",
             title:             "Invalid Session",
-            text:              "No valid recovery session found. Please start the process again.",
+            text:              "No valid account session found. Please start the recovery process again.",
             allowOutsideClick: false,
             confirmButtonText: "Go to Recovery",
             confirmButtonColor:"#198754"
-        }).then(() => { window.location.href = "/forgot-password"; });
-        return;
+        }).then(() => {
+            window.location.href = "/forgot-password";
+        });
     }
 
-    // Verified OTP held in memory; re-sent with the final password save
-    // so the server can do a second independent token check
+    // Verified OTP is stored here before step 2 is shown
     let verifiedOtp = "";
 
     // -------------------------------------------------------
@@ -285,12 +288,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const stepOtp          = document.getElementById("stepOtp");
     const stepPassword     = document.getElementById("stepPassword");
+
     const otpInputs        = document.querySelectorAll(".otp-input-field");
     const countdownDisplay = document.getElementById("countdownDisplay");
     const timerIcon        = document.getElementById("timerIcon");
     const otpStatusMsg     = document.getElementById("otpStatusMsg");
     const verifyOtpBtn     = document.getElementById("verifyOtpBtn");
     const resendOtpBtn     = document.getElementById("resendOtpBtn");
+    const resendCounter    = document.getElementById("resendCounter");
 
     // -------------------------------------------------------
     // ELEMENTS — STEP 2
@@ -306,16 +311,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const confirmPasswordError = document.getElementById("confirmPasswordError");
 
     // -------------------------------------------------------
-    // STATE
+    // HELPERS
     // -------------------------------------------------------
 
     let countdownInterval = null;
     let resendInterval    = null;
     let remainingSeconds  = 0;
-
-    // -------------------------------------------------------
-    // HELPERS
-    // -------------------------------------------------------
 
     function getOtp() {
         let code = "";
@@ -332,30 +333,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function formatTime(s) {
-        const safe = Math.max(s, 0);
-        return String(Math.floor(safe / 60)).padStart(2, "0") +
-               ":" +
-               String(safe % 60).padStart(2, "0");
+        return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
     }
-
-    function clearErrors() {
-        newPasswordError.classList.add("d-none");
-        confirmPasswordError.classList.add("d-none");
-    }
-
-    // -------------------------------------------------------
-    // EXPIRED STATE
-    // -------------------------------------------------------
 
     function setExpiredState() {
         clearInterval(countdownInterval);
         countdownInterval = null;
 
         countdownDisplay.textContent = "00:00";
-        countdownDisplay.classList.remove("text-dark");
-        countdownDisplay.classList.add("text-danger");
-        timerIcon.classList.remove("text-success");
-        timerIcon.classList.add("text-danger");
+        countdownDisplay.classList.replace("text-dark", "text-danger");
+        timerIcon.classList.replace("text-success", "text-danger");
 
         otpStatusMsg.innerHTML = `
             <span class="text-danger">
@@ -368,8 +355,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!resendInterval) {
             resendOtpBtn.disabled = false;
-            resendOtpBtn.innerHTML =
-                `<i class="bi bi-arrow-clockwise"></i> Resend Reset Code`;
+            resendOtpBtn.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Resend Reset Code`;
         }
     }
 
@@ -378,27 +364,21 @@ document.addEventListener("DOMContentLoaded", function () {
         countdownDisplay.classList.add("text-dark");
         timerIcon.classList.remove("text-danger");
         timerIcon.classList.add("text-success");
-        otpStatusMsg.innerHTML =
-            `<i class="bi bi-lock"></i> Secured 256-Bit Reset Authorization Channel`;
+        otpStatusMsg.innerHTML = `<i class="bi bi-lock"></i> Secured 256-Bit Reset Authorization Channel`;
     }
 
     // -------------------------------------------------------
     // COUNTDOWN
-    // Uses a dedicated /auth/reset-timeframe endpoint that
-    // does NOT gate on email_verified, avoiding the clash with
-    // /auth/update-passcode-timeframe-on-frontend which
-    // redirects verified users away.
     // -------------------------------------------------------
 
     function startCountdown() {
         if (countdownInterval) clearInterval(countdownInterval);
         resetCountdownVisuals();
-        enableOtpInputs(true);
         countdownDisplay.textContent = formatTime(remainingSeconds);
 
         countdownInterval = setInterval(() => {
             remainingSeconds--;
-            countdownDisplay.textContent = formatTime(remainingSeconds);
+            countdownDisplay.textContent = formatTime(Math.max(remainingSeconds, 0));
 
             if (remainingSeconds <= 180) {
                 countdownDisplay.classList.remove("text-dark");
@@ -417,14 +397,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 method:  "POST",
                 headers: { "Content-Type": "application/json" },
                 body:    JSON.stringify({
-                    action: "/auth/reset-timeframe",   // ← dedicated endpoint
+                    action: "/auth/update-passcode-timeframe-on-frontend",
                     email:  btoa(email)
                 })
             }).then(r => r.json());
 
             if (!res.success) {
-                // Hard-expired → force full restart
-                if (res.data?.hard_expired) {
+                if (res.data?.hard_expired || res.data?.redirect === "/signup") {
                     await Swal.fire({
                         icon:              "warning",
                         title:             "Session Expired",
@@ -436,8 +415,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     window.location.href = "/forgot-password";
                     return;
                 }
-
-                // Soft-expired → show resend button, keep page alive
                 setExpiredState();
                 return;
             }
@@ -450,7 +427,7 @@ document.addEventListener("DOMContentLoaded", function () {
             Swal.fire({
                 icon:  "error",
                 title: "Connection Error",
-                text:  "Unable to contact the server. Please refresh the page.",
+                text:  "Unable to contact the server. Please refresh.",
                 confirmButtonColor: "#198754"
             });
         }
@@ -476,7 +453,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (e.key === "Backspace" && !this.value && index > 0) {
                 otpInputs[index - 1].focus();
             }
-            if (e.key === "ArrowLeft"  && index > 0)                    otpInputs[index - 1].focus();
+            if (e.key === "ArrowLeft"  && index > 0)                   otpInputs[index - 1].focus();
             if (e.key === "ArrowRight" && index < otpInputs.length - 1) otpInputs[index + 1].focus();
         });
 
@@ -497,17 +474,15 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     otpInputs[0].focus();
-    updateVerifyBtn();
 
     // -------------------------------------------------------
-    // RESEND COOLDOWN
+    // RESEND OTP
     // -------------------------------------------------------
 
     function startResendCooldown() {
         let cooldown = 30;
         resendOtpBtn.disabled = true;
-        resendOtpBtn.innerHTML =
-            `Resend Code (Wait <span id="resendCounter">${cooldown}</span>s)`;
+        resendOtpBtn.innerHTML = `Resend Code (Wait <span id="resendCounter">${cooldown}</span>s)`;
 
         resendInterval = setInterval(() => {
             cooldown--;
@@ -518,21 +493,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 clearInterval(resendInterval);
                 resendInterval = null;
                 resendOtpBtn.disabled = false;
-                resendOtpBtn.innerHTML =
-                    `<i class="bi bi-arrow-clockwise"></i> Resend Reset Code`;
+                resendOtpBtn.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Resend Reset Code`;
             }
         }, 1000);
     }
 
-    // -------------------------------------------------------
-    // RESEND OTP
-    // -------------------------------------------------------
-
     resendOtpBtn.addEventListener("click", async function () {
 
         resendOtpBtn.disabled = true;
-        resendOtpBtn.innerHTML =
-            `<span class="spinner-border spinner-border-sm me-1"></span> Sending...`;
+        resendOtpBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Sending...`;
 
         try {
             const res = await fetch(SERVER, {
@@ -547,24 +516,24 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!res.success) {
                 if (res.data?.redirect) {
                     await Swal.fire({
-                        icon:              "error",
-                        title:             "Error",
-                        text:              res.message,
-                        confirmButtonColor:"#198754"
+                        icon:  "error",
+                        title: "Error",
+                        text:  res.message,
+                        confirmButtonColor: "#198754"
                     });
                     window.location.href = res.data.redirect;
                     return;
                 }
 
                 Swal.fire({
-                    icon:              "info",
-                    title:             "Notice",
-                    text:              res.message,
-                    confirmButtonColor:"#198754"
+                    icon:  "warning",
+                    title: "Notice",
+                    text:  res.message,
+                    confirmButtonColor: "#198754"
                 });
+
                 resendOtpBtn.disabled = false;
-                resendOtpBtn.innerHTML =
-                    `<i class="bi bi-arrow-clockwise"></i> Resend Reset Code`;
+                resendOtpBtn.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Resend Reset Code`;
                 return;
             }
 
@@ -576,6 +545,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 showConfirmButton: false
             });
 
+            // Re-enable and reset OTP boxes
+            enableOtpInputs(true);
             otpInputs.forEach(i => { i.value = ""; });
             otpInputs[0].focus();
             updateVerifyBtn();
@@ -587,8 +558,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (err) {
             console.error(err);
             resendOtpBtn.disabled = false;
-            resendOtpBtn.innerHTML =
-                `<i class="bi bi-arrow-clockwise"></i> Resend Reset Code`;
+            resendOtpBtn.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Resend Reset Code`;
             Swal.fire({
                 icon:  "error",
                 title: "Connection Error",
@@ -600,7 +570,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // -------------------------------------------------------
-    // VERIFY OTP → advance to step 2
+    // VERIFY OTP  →  advance to step 2
     // -------------------------------------------------------
 
     verifyOtpBtn.addEventListener("click", async function () {
@@ -609,8 +579,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (otp.length !== 6) return;
 
         verifyOtpBtn.disabled = true;
-        verifyOtpBtn.innerHTML =
-            `<span class="spinner-border spinner-border-sm me-2"></span> Verifying...`;
+        verifyOtpBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Verifying...`;
         enableOtpInputs(false);
 
         try {
@@ -626,62 +595,46 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (res.success) {
                 clearInterval(countdownInterval);
-                countdownInterval = null;
                 verifiedOtp = otp;
 
+                // Slide to step 2
                 stepOtp.classList.remove("active");
                 stepPassword.classList.add("active");
                 newPasswordInput.focus();
                 return;
             }
 
-            // Restore OTP inputs on any failure
+            // Failed — restore
             enableOtpInputs(true);
             verifyOtpBtn.disabled = false;
-            verifyOtpBtn.innerHTML =
-                `<i class="bi bi-patch-check"></i> Verify Reset Code`;
+            verifyOtpBtn.innerHTML = `<i class="bi bi-patch-check"></i> Verify Reset Code`;
             otpInputs.forEach(i => { i.value = ""; });
             otpInputs[0].focus();
             updateVerifyBtn();
 
-            // Hard redirect (account blocked etc.)
-            if (res.data?.redirect && !res.data?.expired) {
+            if (res.data?.redirect) {
                 await Swal.fire({
-                    icon:              "error",
-                    title:             "Verification Failed",
-                    text:              res.message,
-                    confirmButtonColor:"#198754"
+                    icon:  "error",
+                    title: "Verification Failed",
+                    text:  res.message,
+                    confirmButtonColor: "#198754"
                 });
                 window.location.href = res.data.redirect;
                 return;
             }
 
-            // Code expired mid-entry — trigger expired state + resend
-            if (res.data?.expired) {
-                setExpiredState();
-                Swal.fire({
-                    icon:              "warning",
-                    title:             "Code Expired",
-                    text:              res.message,
-                    confirmButtonColor:"#198754"
-                });
-                return;
-            }
-
-            // Wrong code — stay on page
             Swal.fire({
-                icon:              "error",
-                title:             "Verification Failed",
-                text:              res.message,
-                confirmButtonColor:"#198754"
+                icon:  "error",
+                title: "Verification Failed",
+                text:  res.message,
+                confirmButtonColor: "#198754"
             });
 
         } catch (err) {
             console.error(err);
             enableOtpInputs(true);
             verifyOtpBtn.disabled = false;
-            verifyOtpBtn.innerHTML =
-                `<i class="bi bi-patch-check"></i> Verify Reset Code`;
+            verifyOtpBtn.innerHTML = `<i class="bi bi-patch-check"></i> Verify Reset Code`;
             Swal.fire({
                 icon:  "error",
                 title: "Connection Error",
@@ -693,7 +646,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // -------------------------------------------------------
-    // PASSWORD TOGGLE
+    // PASSWORD TOGGLE BUTTONS
     // -------------------------------------------------------
 
     function bindToggle(btnId, inputId, iconId) {
@@ -702,8 +655,8 @@ document.addEventListener("DOMContentLoaded", function () {
             const icon = document.getElementById(iconId);
             const hide = inp.type === "password";
             inp.type = hide ? "text" : "password";
-            icon.classList.toggle("bi-eye",      !hide);
-            icon.classList.toggle("bi-eye-slash", hide);
+            icon.classList.toggle("bi-eye",       !hide);
+            icon.classList.toggle("bi-eye-slash",  hide);
         });
     }
 
@@ -715,21 +668,21 @@ document.addEventListener("DOMContentLoaded", function () {
     // -------------------------------------------------------
 
     const rules = {
-        length: { el: document.getElementById("rule-length"), test: v => v.length >= 6   },
-        upper:  { el: document.getElementById("rule-upper"),  test: v => /[A-Z]/.test(v) },
-        digit:  { el: document.getElementById("rule-digit"),  test: v => /[0-9]/.test(v) }
+        length: { el: document.getElementById("rule-length"), test: v => v.length >= 6      },
+        upper:  { el: document.getElementById("rule-upper"),  test: v => /[A-Z]/.test(v)    },
+        digit:  { el: document.getElementById("rule-digit"),  test: v => /[0-9]/.test(v)    }
     };
 
     const strengthLevels = [
-        { label: "",       color: "",        width: "0%"   },
-        { label: "Weak",   color: "#dc3545", width: "33%"  },
-        { label: "Fair",   color: "#f59e0b", width: "66%"  },
-        { label: "Strong", color: "#198754", width: "100%" }
+        { label: "",          color: "",        width: "0%"   },
+        { label: "Weak",      color: "#dc3545", width: "33%"  },
+        { label: "Fair",      color: "#f59e0b", width: "66%"  },
+        { label: "Strong",    color: "#198754", width: "100%" }
     ];
 
     newPasswordInput.addEventListener("input", function () {
-        const val    = this.value;
-        let   passed = 0;
+        const val = this.value;
+        let passed = 0;
 
         Object.values(rules).forEach(r => {
             const ok = r.test(val);
@@ -741,12 +694,13 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         const level = val.length === 0 ? 0 : Math.min(passed, 3);
-        const s     = strengthLevels[level];
+        const s = strengthLevels[level];
         strengthBarFill.style.width           = s.width;
         strengthBarFill.style.backgroundColor = s.color;
         strengthLabel.textContent             = s.label;
         strengthLabel.style.color             = s.color;
 
+        // Clear error on type
         newPasswordError.classList.add("d-none");
     });
 
@@ -760,19 +714,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
     resetPasswordForm.addEventListener("submit", async function (e) {
         e.preventDefault();
-        clearErrors();
 
         const newPass     = newPasswordInput.value;
         const confirmPass = confirmPasswordInput.value;
         let   valid       = true;
 
+        // Validate new password
         if (!/^(?=.*[A-Z])(?=.*\d).{6,}$/.test(newPass)) {
-            newPasswordError.textContent =
-                "Password must be at least 6 characters with one uppercase letter and one number.";
+            newPasswordError.textContent = "Password must be at least 6 characters with one uppercase letter and one number.";
             newPasswordError.classList.remove("d-none");
             valid = false;
         }
 
+        // Validate match
         if (newPass !== confirmPass) {
             confirmPasswordError.textContent = "Passwords do not match.";
             confirmPasswordError.classList.remove("d-none");
@@ -781,19 +735,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!valid) return;
 
-        if (!verifiedOtp) {
-            Swal.fire({
-                icon:              "error",
-                title:             "Session Error",
-                text:              "Verification session missing. Please start again.",
-                confirmButtonColor:"#198754"
-            }).then(() => { window.location.href = "/forgot-password"; });
-            return;
-        }
-
         savePasswordBtn.disabled = true;
-        savePasswordBtn.innerHTML =
-            `<span class="spinner-border spinner-border-sm me-2"></span> Saving...`;
+        savePasswordBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Saving...`;
 
         try {
             const res = await fetch(SERVER, {
@@ -820,22 +763,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            // Token expired between step 1 and step 2 — restart
             if (res.data?.redirect) {
                 await Swal.fire({
-                    icon:              "error",
-                    title:             "Session Expired",
-                    text:              res.message,
-                    confirmButtonColor:"#198754"
+                    icon:  "error",
+                    title: "Session Expired",
+                    text:  res.message,
+                    confirmButtonColor: "#198754"
                 });
                 window.location.href = res.data.redirect;
                 return;
             }
 
             Swal.fire({
-                icon:              "error",
-                title:             "Reset Failed",
-                text:              res.message,
-                confirmButtonColor:"#198754"
+                icon:  "error",
+                title: "Reset Failed",
+                text:  res.message,
+                confirmButtonColor: "#198754"
             });
 
         } catch (err) {
@@ -848,8 +792,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         } finally {
             savePasswordBtn.disabled = false;
-            savePasswordBtn.innerHTML =
-                `<i class="bi bi-floppy-fill"></i> Save New Password`;
+            savePasswordBtn.innerHTML = `<i class="bi bi-floppy-fill"></i> Save New Password`;
         }
 
     });

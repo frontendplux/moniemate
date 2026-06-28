@@ -391,7 +391,7 @@
                     });
 
                     if (res.data?.redirect) {
-                        window.location.href = res.data.redirect;
+                        window.location.href = res.data.redirect+"?u="+res.data.email;
                     }
 
                     return;

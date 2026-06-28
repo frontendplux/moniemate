@@ -4,7 +4,7 @@ session_start();
 $data=parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
 $company_info=[
-    "name" => "",
+    "name" => "monimate",
     "title" => "",
     "logo" => "/pygg.png",
     "description" => "", 
@@ -46,6 +46,7 @@ switch ($data) {
         break;
     
     case '/forget-password':
+    case '/forgot-password':
             include __DIR__."/pages/forget-password.php"; 
         break;
     
